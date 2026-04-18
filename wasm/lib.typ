@@ -1,0 +1,1 @@
+#let p = plugin("plugin.wasm")
