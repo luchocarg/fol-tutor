@@ -1,4 +1,4 @@
-#include "test_helpers.h"
+#include "tests.h"
 #include <stdio.h>
 
 void test_parse_atoms(void) {
