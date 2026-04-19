@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "ast.h"
@@ -34,4 +33,56 @@ void free_ast(ASTNode* node) {
 
     if (node->name) free(node->name);
     free(node);
+}
+
+
+void ast_to_sexpr(ASTNode* n, char* buf) {
+    if (!n) return;
+    switch (n->type) {
+        case NODE_PREDICATE:
+            if (n->term_count > 0) {
+                strcat(buf, "(");
+            }
+            
+            strcat(buf, n->name);
+            
+            for (int i = 0; i < n->term_count; i++) {
+                strcat(buf, " ");
+                term_to_sexpr(n->terms[i], buf);
+            }
+            
+            if (n->term_count > 0) {
+                strcat(buf, ")");
+            }
+            break;
+        case NODE_QUANTIFIER:
+            strcat(buf, "(");
+            strcat(buf, n->op == TOKEN_FORALL ? "∀" : "∃");
+            strcat(buf, " ");
+            if (n->name) strcat(buf, n->name);
+            strcat(buf, " ");
+            ast_to_sexpr(n->left, buf);
+            strcat(buf, ")");
+            break;
+        case NODE_UNARY:
+            strcat(buf, "(¬ ");
+            ast_to_sexpr(n->left, buf);
+            strcat(buf, ")");
+            break;
+        case NODE_BINARY:
+            strcat(buf, "(");
+            const char* op = (n->op == TOKEN_AND) ? "∧" : 
+                             (n->op == TOKEN_OR ? "∨" : "⇒");
+            strcat(buf, op);
+            strcat(buf, " ");
+            ast_to_sexpr(n->left, buf);
+            strcat(buf, " ");
+            ast_to_sexpr(n->right, buf);
+            strcat(buf, ")");
+            break;
+        case NODE_FALSUM:
+            strcat(buf, "⊥");
+            break;
+        default: break;
+    }
 }

@@ -123,7 +123,6 @@ void test_image_cases_standard(void) {
 }
 
 void test_arity_consistency(void) {
-    parser_silent_mode = 1;
     SymbolTable* st = create_symbol_table();
 
     Lexer l1 = {"P(x) ∧ P(x, y)", 0};

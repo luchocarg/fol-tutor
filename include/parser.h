@@ -5,8 +5,6 @@
 #include "symbol_table.h"
 #include "ast.h"
 
-extern int parser_silent_mode;
-
 typedef enum {
     TERM_VARIABLE,
     TERM_FUNCTION
@@ -30,5 +28,7 @@ Term* parse_term(Lexer* l, SymbolTable* st);
 Term** parse_term_list(Lexer* l, int* count, SymbolTable* st);
 Term* create_term(TermType type);
 void free_term(Term* t);
+
+void term_to_sexpr(Term* t, char* buf);
 
 #endif

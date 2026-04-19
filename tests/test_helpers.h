@@ -3,6 +3,7 @@
 
 #include "lexer.h"
 #include "parser.h"
+#include <stdlib.h>
 #include <assert.h>
 #include <string.h>
 
@@ -14,8 +15,16 @@ static inline void assert_token(Token t, TokenType expected_type, size_t expecte
     }
 }
 
-void term_to_sexpr(Term* t, char* buf);
-void ast_to_sexpr(ASTNode* n, char* buf);
-void assert_ast(ASTNode* node, const char* expected_sexpr);
+static inline void assert_ast(ASTNode* node, const char* expected_sexpr) {
+    if (node == NULL) {
+        exit(1);
+    }
+    char obtained[2048] = "";
+    obtained[0] = '\0'; 
+    ast_to_sexpr(node, obtained);
+        if (strcmp(obtained, expected_sexpr) != 0) {
+        exit(1);
+    }
+}
 
 #endif

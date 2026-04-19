@@ -18,11 +18,12 @@ WASM_DIR     := wasm
 WASM_SRC     := $(WASM_DIR)/plugin.c
 WASM_OUT     := $(WASM_DIR)/plugin.wasm
 
-EMCC_FLAGS   := -O3 \
+EMCC_FLAGS   := -O3 -Iinclude \
                 --no-entry \
                 -s STANDALONE_WASM \
+                -s PURE_WASI=0 \
+                -s FILESYSTEM=0 \
                 -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
-                -s WARN_ON_UNDEFINED_SYMBOLS=0 \
                 -s EXPORTED_FUNCTIONS='["_run_cnf_transform", "_malloc", "_free"]' \
                 -s ALLOW_MEMORY_GROWTH=0 \
                 -s INITIAL_MEMORY=6553600 \
@@ -44,8 +45,8 @@ $(OBJ_DIR):
 
 wasm:
 	@mkdir -p $(WASM_DIR)
-	$(EMCC) $(EMCC_FLAGS) $(WASM_SRC) -o $(WASM_OUT)
-
+	$(EMCC) $(EMCC_FLAGS) $(WASM_SRC) $(SRCS) -o $(WASM_OUT)
+	
 test: all
 	./$(BIN)
 

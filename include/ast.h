@@ -28,4 +28,6 @@ struct ASTNode {
 ASTNode* create_node(ASTNodeType type);
 void free_ast(ASTNode* node);
 
+void ast_to_sexpr(ASTNode* n, char* buf);
+
 #endif

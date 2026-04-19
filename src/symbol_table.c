@@ -1,7 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include "symbol_table.h"
 #include "parser.h"
 
@@ -19,16 +18,9 @@ int validate_or_register(SymbolTable* table, const char* name, int arity, Symbol
     while (curr) {
         if (strcmp(curr->name, name) == 0) {
             if (curr->type != type) {
-                if (!parser_silent_mode) {
-                    fprintf(stderr, "Semantic Error: '%s' used as Predicate and Function.\n", name);
-                }
                 return 0;
             }
             if (curr->arity != arity) {
-                if (!parser_silent_mode) {
-                    fprintf(stderr, "Semantic Error: Inconsistent arity for '%s' (%d != %d).\n", 
-                        name, arity, curr->arity);
-                }
                 return 0;
             }
             return 1;

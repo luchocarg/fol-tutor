@@ -1,10 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "parser.h"
-
-int parser_silent_mode = 0;
 
 ASTNode* parse_formula(Lexer* l, SymbolTable* st) {
     ASTNode* node = parse_implication(l, st);
@@ -12,7 +9,6 @@ ASTNode* parse_formula(Lexer* l, SymbolTable* st) {
     
     Token next = peek_token(l);
     if (next.type != TOKEN_EOF) {
-        fprintf(stderr, "Syntax error: An unexpected token was found at the end.\n");
     }
 
     return node;
@@ -97,13 +93,11 @@ ASTNode* parse_unary(Lexer* l, SymbolTable* st) {
         
         Token var = get_next_token(l);
         if (var.type != TOKEN_UPPER_INDENT) {
-            fprintf(stderr, "Syntax error: Expected variable (UPPERCASE) after quantifier.\n");
             return NULL;
         }
 
         Token dot = get_next_token(l);
         if (dot.type != TOKEN_DOT) {
-            fprintf(stderr, "Syntax error: Expected '.' after quantifier variable.\n");
             return NULL;
         }
 
@@ -148,7 +142,6 @@ ASTNode* parse_primary(Lexer* l, SymbolTable* st) {
         ASTNode* node = parse_implication(l, st);
         if (!node) return NULL;
         if (get_next_token(l).type != TOKEN_RIGHT_PARENT) {
-            fprintf(stderr, "Error: Expected ')'\n");
             free_ast(node);
             return NULL;
         }
@@ -177,9 +170,6 @@ ASTNode* parse_primary(Lexer* l, SymbolTable* st) {
             }
 
             if (get_next_token(l).type != TOKEN_RIGHT_PARENT) {
-                if (!parser_silent_mode) {
-                    fprintf(stderr, "Error: Expected ')' after terms\n");
-                }
                 free_ast(node);
                 return NULL;
             }
@@ -196,8 +186,7 @@ ASTNode* parse_primary(Lexer* l, SymbolTable* st) {
     }
 
     if (t.type == TOKEN_LOWER_INDENT) {
-        fprintf(stderr, "Semantic Error: Function or Constant '%.*s' cannot be used as a formula.\n", 
-                (int)t.length, t.start);
+        
         return NULL;
     }
 
@@ -216,7 +205,6 @@ Term* parse_term(Lexer* l, SymbolTable* st) {
         get_next_token(l);
         term->args = parse_term_list(l, &term->arity, st);
         if (get_next_token(l).type != TOKEN_RIGHT_PARENT) {
-            fprintf(stderr, "Syntax error: Expected ')' after function arguments.\n");
             free_term(term);
             return NULL; 
         }
@@ -289,4 +277,20 @@ void free_term(Term* t) {
     
     if (t->name) free(t->name);
     free(t);
+}
+
+void term_to_sexpr(Term* t, char* buf) {
+    if (!t) return;
+
+    if (t->type == TERM_FUNCTION && t->arity > 0) {
+        strcat(buf, "(");
+        strcat(buf, t->name);
+        for (int i = 0; i < t->arity; i++) {
+            strcat(buf, " ");
+            term_to_sexpr(t->args[i], buf);
+        }
+        strcat(buf, ")");
+    } else {
+        strcat(buf, t->name);
+    }
 }
