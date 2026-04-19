@@ -1,4 +1,5 @@
 #include "test_helpers.h"
+#include <stdio.h>
 
 void test_whitespace_and_control(void) {
     Lexer l = {"  \n\t  P", 0};

@@ -5,6 +5,7 @@ int main(void) {
     printf("=== RUNNING ALL TESTS ===\n\n");
 
     run_lexer_tests();
+    run_parser_tests();
 
     printf("\n=== ALL TESTS PASSED ===\n");
     return 0;

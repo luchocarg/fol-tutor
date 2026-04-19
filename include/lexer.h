@@ -30,4 +30,6 @@ void skip_whitespace_and_control(Lexer* l);
 Token lex_identifier(Lexer* l);
 Token get_next_token(Lexer* l);
 
+Token peek_token(Lexer* l);
+
 #endif

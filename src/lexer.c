@@ -29,6 +29,7 @@ static const UTF8Map UTF8_TABLE[] = {
     {"∧", TOKEN_AND,    3},
     {"∨", TOKEN_OR,     3},
     {"¬", TOKEN_NOT,    2},
+    {"⊥", TOKEN_FALSUM, 3},
     {NULL, TOKEN_ERROR, 0}
 };
 
@@ -120,13 +121,23 @@ Token get_next_token(Lexer* l) {
         }
     }
 
-    l->cursor++;
-    switch (c) {
-        case '(': return (Token){TOKEN_LEFT_PARENT, 	start_ptr, 1};
-        case ')': return (Token){TOKEN_RIGHT_PARENT, 	start_ptr, 1};
-        case '.': return (Token){TOKEN_DOT,    			start_ptr, 1};
-        case ',': return (Token){TOKEN_COMMA,  			start_ptr, 1};
-    }
+    char current = l->source[l->cursor++];
+    switch (current) {
+        case '(': return (Token){TOKEN_LEFT_PARENT,  start_ptr, 1};
+        case ')': return (Token){TOKEN_RIGHT_PARENT, start_ptr, 1};
+        case '.': return (Token){TOKEN_DOT,          start_ptr, 1};
+        case ',': return (Token){TOKEN_COMMA,        start_ptr, 1};
+        default:  return (Token){TOKEN_ERROR,        start_ptr, 1};
+}
 
     return (Token){TOKEN_ERROR, start_ptr, 1};
+}
+
+Token peek_token(Lexer* l) {
+    int temp_cursor = l->cursor;
+
+    Token t = get_next_token(l);    
+    
+    l->cursor = temp_cursor;
+    return t;
 }
