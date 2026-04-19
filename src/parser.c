@@ -16,8 +16,6 @@ ASTNode* parse_formula(Lexer* l, SymbolTable* st) {
     }
 
     return node;
-
-
 }
 
 ASTNode* parse_implication(Lexer* l, SymbolTable* st) {
@@ -267,21 +265,6 @@ Term** parse_term_list(Lexer* l, int* count, SymbolTable* st) {
     return list;
 }
 
-ASTNode* create_node(ASTNodeType type) {
-    ASTNode* node = (ASTNode*)malloc(sizeof(ASTNode));
-    if (!node) return NULL;
-    
-    node->type =  type;
-    node->op =    TOKEN_ERROR;
-    node->left =  NULL;
-    node->right = NULL;
-    node->name =  NULL;
-    node->terms = NULL;
-    node->term_count = 0;
-    
-    return node;
-}
-
 Term* create_term(TermType type) {
     Term* t = (Term*)malloc(sizeof(Term));
     if (!t) return NULL;
@@ -306,21 +289,4 @@ void free_term(Term* t) {
     
     if (t->name) free(t->name);
     free(t);
-}
-
-void free_ast(ASTNode* node) {
-    if (!node) return;
-
-    free_ast(node->left);
-    free_ast(node->right);
-
-    if (node->terms) {
-        for (int i = 0; i < node->term_count; i++) {
-            free_term(node->terms[i]);
-        }
-        free(node->terms);
-    }
-
-    if (node->name) free(node->name);
-    free(node);
 }
