@@ -26,6 +26,7 @@ struct ASTNode {
 };
 
 ASTNode* create_node(ASTNodeType type);
+ASTNode* create_unary_node(TokenType op, ASTNode* child);
 void free_ast(ASTNode* node);
 
 void ast_to_sexpr(ASTNode* n, char* buf);

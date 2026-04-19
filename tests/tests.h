@@ -9,6 +9,16 @@
 
 void run_lexer_tests(void);
 void run_parser_tests(void);
+void run_transform_tests(void);
+
+void test_nnf_double_negation(void);
+void test_nnf_de_morgan(void);
+void test_nnf_quantifiers(void);
+void test_nnf_complex_recursive(void);
+
+void test_pnf_left_extraction(void);
+void test_pnf_right_extraction(void);
+void test_pnf_multiple_extraction(void);
 
 static inline void assert_token(Token t, TokenType expected_type, size_t expected_len, const char* expected_text) {
     assert(t.type == expected_type);

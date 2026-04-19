@@ -1,3 +1,7 @@
 #let logic-plugin = plugin("plugin.wasm")
 
-#str(logic-plugin.run_cnf_transform(bytes("forall X. Q(f(f(f(x))),y) and O")))
+#let res = logic-plugin.run_cnf_transform(bytes("forall X_23. Q(f(X_23, Y_23, Z_23),y) and O"))
+
+$forall X_23. Q(f(x),y) and O$
+
+#str(res)

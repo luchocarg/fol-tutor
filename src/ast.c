@@ -86,3 +86,12 @@ void ast_to_sexpr(ASTNode* n, char* buf) {
         default: break;
     }
 }
+
+ASTNode* create_unary_node(TokenType op, ASTNode* child) {
+    ASTNode* node = create_node(NODE_UNARY);
+    if (!node) return NULL;
+    node->op = op;
+    node->left = child;
+    node->right = NULL;
+    return node;
+}
