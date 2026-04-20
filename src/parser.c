@@ -92,7 +92,7 @@ ASTNode* parse_unary(Lexer* l, SymbolTable* st) {
         get_next_token(l);
         
         Token var = get_next_token(l);
-        if (var.type != TOKEN_UPPER_INDENT) {
+        if (var.type != TOKEN_ID_UPPER) {
             return NULL;
         }
 
@@ -153,7 +153,7 @@ ASTNode* parse_primary(Lexer* l, SymbolTable* st) {
         return create_node(NODE_FALSUM);
     }
 
-    if (t.type == TOKEN_UPPER_INDENT) {
+    if (t.type == TOKEN_ID_UPPER) {
         Token name_tok = get_next_token(l);
         ASTNode* node = create_node(NODE_PREDICATE);
         if (!node) return NULL;
@@ -185,7 +185,7 @@ ASTNode* parse_primary(Lexer* l, SymbolTable* st) {
         return node;
     }
 
-    if (t.type == TOKEN_LOWER_INDENT) {
+    if (t.type == TOKEN_ID_LOWER) {
         
         return NULL;
     }
@@ -196,12 +196,12 @@ ASTNode* parse_primary(Lexer* l, SymbolTable* st) {
 Term* parse_term(Lexer* l, SymbolTable* st) {
     Token t = get_next_token(l);
     
-    if (t.type != TOKEN_LOWER_INDENT && t.type != TOKEN_UPPER_INDENT) return NULL;
+    if (t.type != TOKEN_ID_LOWER && t.type != TOKEN_ID_UPPER) return NULL;
 
-    Term* term = create_term(t.type == TOKEN_UPPER_INDENT ? TERM_VARIABLE : TERM_FUNCTION);
+    Term* term = create_term(t.type == TOKEN_ID_UPPER ? TERM_VARIABLE : TERM_FUNCTION);
     term->name = strndup(t.start, t.length);
 
-    if (t.type == TOKEN_LOWER_INDENT && peek_token(l).type == TOKEN_LEFT_PARENT) {
+    if (t.type == TOKEN_ID_LOWER && peek_token(l).type == TOKEN_LEFT_PARENT) {
         get_next_token(l);
         term->args = parse_term_list(l, &term->arity, st);
         if (get_next_token(l).type != TOKEN_RIGHT_PARENT) {
@@ -213,7 +213,7 @@ Term* parse_term(Lexer* l, SymbolTable* st) {
         term->args = NULL;
     }
 
-    if (t.type == TOKEN_LOWER_INDENT) {
+    if (t.type == TOKEN_ID_LOWER) {
         if (!validate_or_register(st, term->name, term->arity, SYM_FUNCTION)) {
             free_term(term);
             return NULL;
