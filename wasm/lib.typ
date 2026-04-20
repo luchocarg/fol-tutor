@@ -1,13 +1,25 @@
-#let my-plugin = plugin("plugin.wasm")
+#let logic = plugin("plugin.wasm")
 
-#let cnf-transform(formula) = {
-  let result = my-plugin.run_cnf_transform(bytes(formula))
-  
-  str(result)
-}
+#let test = "forall X. forall X. exists Z. (P(X) and (F(f(X)) or (K and M(X))))"
+#eval("$" + test + "$")
 
-#let original = "forall X. (forall X. (forall X. (P(X) => X) and X) and K(X))"
-#let transformed = cnf-transform(original)
+#let test = str(logic.run_alpha(bytes(test)))
+#eval("$" + test + "$")
 
-Original: #eval("$" + original + "$") \
-S-expression: #raw(transformed)
+#let test = str(logic.run_nnf(bytes(test)))
+#eval("$" + test + "$")
+
+#let test = str(logic.run_pnf(bytes(test)))
+#eval("$" + test + "$")
+
+#let test = str(logic.run_skolem(bytes(test)))
+#eval("$" + test + "$")
+
+#let test = str(logic.run_distribute(bytes(test)))
+#eval("$" + test + "$")
+
+#let test = str(logic.run_push_universals(bytes(test)))
+#eval("$" + test + "$")
+
+#let test = str(logic.run_skolem(bytes("∀X.∃Y.P(X,Y)")))
+#eval("$" + test + "$")
