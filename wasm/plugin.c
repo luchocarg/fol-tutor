@@ -4,30 +4,33 @@
 #include "../include/lexer.h"
 #include "../include/ast.h"
 #include "../include/parser.h"
+#include "../include/transform.h"
 #include "../include/wasm_plugin.h"
-
-#define TYPST_ENV __attribute__((import_module("typst_env")))
-
-extern TYPST_ENV void wasm_minimal_protocol_send_result_to_host(const uint8_t *ptr, size_t len);
-extern TYPST_ENV void wasm_minimal_protocol_write_args_to_buffer(uint8_t *ptr);
 
 EMSCRIPTEN_KEEPALIVE
 int32_t run_cnf_transform(size_t data_len) {
     if (data_len == 0) return 0;
 
-    // Typst -> C
     uint8_t *input_buf = malloc(data_len + 1);
     if (!input_buf) return 1;
+    
     wasm_read_args(input_buf);
     input_buf[data_len] = '\0';
 
-    // Lexer and Parser
     Lexer l = { .source = (const char*)input_buf, .cursor = 0 };
     SymbolTable* st = create_symbol_table();
-    ASTNode* root = parse_formula(&l, st); 
+    
+    Parser p = { .l = &l, .st = st };
+    ASTNode* root = parse_formula(&p); 
 
     if (root) {
-        // Out buffer x4 input
+        root = transform_remove_implications(root);
+        root = transform_to_nnf(root);
+ 
+        transform_reset_alpha_counter();
+        transform_alpha_rename(root, NULL);
+        root = transform_to_pnf(root);
+
         char* output_str = calloc(data_len * 4 + 128, sizeof(char));
         if (output_str) {
             output_str[0] = '\0';

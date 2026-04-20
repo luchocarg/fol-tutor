@@ -1,7 +1,13 @@
-#let logic-plugin = plugin("plugin.wasm")
+#let my-plugin = plugin("plugin.wasm")
 
-#let res = logic-plugin.run_cnf_transform(bytes("forall X_23. Q(f(X_23, Y_23, Z_23),y) and O"))
+#let cnf-transform(formula) = {
+  let result = my-plugin.run_cnf_transform(bytes(formula))
+  
+  str(result)
+}
 
-$forall X_23. Q(f(x),y) and O$
+#let original = "forall X. (forall X. (forall X. (P(X) => X) and X) and K(X))"
+#let transformed = cnf-transform(original)
 
-#str(res)
+Original: #eval("$" + original + "$") \
+S-expression: #raw(transformed)

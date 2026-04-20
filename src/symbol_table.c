@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "symbol_table.h"
-#include "parser.h"
 
 SymbolTable* create_symbol_table(void) {
     SymbolTable* table = (SymbolTable*)malloc(sizeof(SymbolTable));
@@ -17,13 +16,7 @@ int validate_or_register(SymbolTable* table, const char* name, int arity, Symbol
     Symbol* curr = table->head;
     while (curr) {
         if (strcmp(curr->name, name) == 0) {
-            if (curr->type != type) {
-                return 0;
-            }
-            if (curr->arity != arity) {
-                return 0;
-            }
-            return 1;
+            return (curr->type == type && curr->arity == arity);
         }
         curr = curr->next;
     }
@@ -32,11 +25,6 @@ int validate_or_register(SymbolTable* table, const char* name, int arity, Symbol
     if (!new_sym) return 0;
 
     new_sym->name = strdup(name);
-    if (!new_sym->name) {
-        free(new_sym);
-        return 0;
-    }
-
     new_sym->arity = arity;
     new_sym->type = type;
     new_sym->next = table->head;

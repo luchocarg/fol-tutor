@@ -5,30 +5,19 @@
 #include "symbol_table.h"
 #include "ast.h"
 
-typedef enum {
-    TERM_VARIABLE,
-    TERM_FUNCTION
-} TermType;
+typedef struct {
+    Lexer* l;
+    SymbolTable* st;
+} Parser;
 
-struct Term {
-    TermType type;
-    char* name;
-    struct Term** args;
-    int arity;
-};
+ASTNode* parse_formula(Parser* p);
+ASTNode* parse_implication(Parser* p);
+ASTNode* parse_disjunction(Parser* p);
+ASTNode* parse_conjunction(Parser* p);
+ASTNode* parse_unary(Parser* p);
+ASTNode* parse_primary(Parser* p);
 
-ASTNode* parse_formula(Lexer* l, SymbolTable* st);
-ASTNode* parse_implication(Lexer* l, SymbolTable* st);
-ASTNode* parse_disjunction(Lexer* l, SymbolTable* st);
-ASTNode* parse_conjunction(Lexer* l, SymbolTable* st);
-ASTNode* parse_unary(Lexer* l, SymbolTable* st);
-ASTNode* parse_primary(Lexer* l, SymbolTable* st);
-
-Term* parse_term(Lexer* l, SymbolTable* st);
-Term** parse_term_list(Lexer* l, int* count, SymbolTable* st);
-Term* create_term(TermType type);
-void free_term(Term* t);
-
-void term_to_sexpr(Term* t, char* buf);
+Term* parse_term(Parser* p);
+Term** parse_term_list(Parser* p, int* count);
 
 #endif

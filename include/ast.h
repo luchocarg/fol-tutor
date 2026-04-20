@@ -4,14 +4,26 @@
 #include <stddef.h>
 #include "lexer.h"
 
-typedef struct ASTNode ASTNode;
 typedef struct Term Term;
+typedef struct ASTNode ASTNode;
+
+typedef enum {
+    TERM_VARIABLE,
+    TERM_FUNCTION
+} TermType;
+
+struct Term {
+    TermType type;
+    char* name;
+    struct Term** args;
+    int arity;
+};
 
 typedef enum {
     NODE_QUANTIFIER,
     NODE_UNARY,
     NODE_BINARY,
-    NODE_PREDICATE,
+    NODE_ATOM,
     NODE_FALSUM
 } ASTNodeType;
 
@@ -19,16 +31,19 @@ struct ASTNode {
     ASTNodeType type;
     TokenType op;
     struct ASTNode *left;
-    struct ASTNode *right; // restricted for binary ops
+    struct ASTNode *right; 
     char* name;
     Term** terms;
-    int term_count;
+    int arity;
 };
 
 ASTNode* create_node(ASTNodeType type);
 ASTNode* create_unary_node(TokenType op, ASTNode* child);
 void free_ast(ASTNode* node);
-
 void ast_to_sexpr(ASTNode* n, char* buf);
+
+Term* create_term(TermType type);
+void free_term(Term* t);
+void term_to_sexpr(Term* t, char* buf);
 
 #endif
