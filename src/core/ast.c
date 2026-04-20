@@ -70,7 +70,7 @@ static void ast_to_formula_impl(ASTNode* n, char* buf, bool is_root) {
 }
 
 void ast_to_formula(ASTNode* n, char* buf) {
-   buf[0] = '\0';
+    //buf[0] = '\0';
     ast_to_formula_impl(n, buf, true);
 }
 
@@ -250,4 +250,52 @@ ASTNode* create_unary_node(TokenType op, ASTNode* child) {
     node->left = child;
     node->right = NULL;
     return node;
+}
+
+static void print_literals_as_set(ASTNode* n, char* buf) {
+    if (!n) return;
+    
+    if (n->type == NODE_BINARY && n->op == TOKEN_OR) {
+        print_literals_as_set(n->left, buf);
+        strcat(buf, ", ");
+        print_literals_as_set(n->right, buf);
+    } else {
+        ast_to_formula(n, buf); 
+    }
+}
+
+static void collect_clauses_recursive(ASTNode* n, char* buf, int* is_first) {
+    if (!n) return;
+
+    if (n->type == NODE_BINARY && n->op == TOKEN_AND) {
+        collect_clauses_recursive(n->left, buf, is_first);
+        collect_clauses_recursive(n->right, buf, is_first);
+    } 
+    else if (n->type == NODE_QUANTIFIER) {
+        collect_clauses_recursive(n->left, buf, is_first);
+    } 
+    else {
+        if (!(*is_first)) {
+            strcat(buf, ", ");
+        }
+        strcat(buf, "{");
+        print_literals_as_set(n, buf);
+        strcat(buf, "}");
+        *is_first = 0;
+    }
+}
+
+void ast_to_cnf_sets(ASTNode* n, char* buf) {
+    if (!n) {
+        strcpy(buf, "{}");
+        return;
+    }
+    
+    buf[0] = '\0'; 
+    strcat(buf, "{");
+    
+    int is_first = 1;
+    collect_clauses_recursive(n, buf, &is_first);
+    
+    strcat(buf, "}");
 }

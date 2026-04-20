@@ -1,6 +1,7 @@
 #include <emscripten.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include "../include/core/lexer.h"
 #include "../include/core/ast.h"
 #include "../include/core/parser.h"
@@ -8,8 +9,9 @@
 #include "../include/wasm_plugin.h"
 
 typedef ASTNode* (*TransformStep)(ASTNode*);
+typedef void (*OutputFormat)(ASTNode*, char*);
 
-static int32_t run_pipeline(size_t data_len, TransformStep step) {
+static int32_t run_pipeline(size_t data_len, TransformStep step, OutputFormat format) {
     if (data_len == 0) return 0;
 
     uint8_t *input_buf = malloc(data_len + 1);
@@ -27,10 +29,11 @@ static int32_t run_pipeline(size_t data_len, TransformStep step) {
             root = step(root);
         }
 
-        char* output_str = calloc(data_len * 4 + 128, sizeof(char));
+        char* output_str = calloc(data_len * 8 + 512, sizeof(char));
         if (output_str) {
-            ast_to_formula(root, output_str);
-            wasm_send_result((uint8_t*)output_str, strlen(output_str));
+            format(root, output_str); 
+            
+            wasm_send_result((uint8_t*)output_str, (size_t)strlen(output_str));
             free(output_str);
         }
         free_ast(root);
@@ -44,16 +47,6 @@ static int32_t run_pipeline(size_t data_len, TransformStep step) {
     return 0;
 }
 
-EMSCRIPTEN_KEEPALIVE
-int32_t run_nnf(size_t data_len) {
-    return run_pipeline(data_len, transform_to_nnf);
-}
-
-EMSCRIPTEN_KEEPALIVE
-int32_t run_pnf(size_t data_len) {
-    return run_pipeline(data_len, transform_to_pnf);
-}
-
 static ASTNode* wrap_alpha(ASTNode* n) {
     transform_reset_alpha_counter();
     transform_alpha_rename(n, NULL);
@@ -61,21 +54,36 @@ static ASTNode* wrap_alpha(ASTNode* n) {
 }
 
 EMSCRIPTEN_KEEPALIVE
+int32_t run_nnf(size_t data_len) {
+    return run_pipeline(data_len, transform_to_nnf, ast_to_formula);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int32_t run_pnf(size_t data_len) {
+    return run_pipeline(data_len, transform_to_pnf, ast_to_formula);
+}
+
+EMSCRIPTEN_KEEPALIVE
 int32_t run_alpha(size_t data_len) {
-    return run_pipeline(data_len, wrap_alpha);
+    return run_pipeline(data_len, wrap_alpha, ast_to_formula);
 }
 
 EMSCRIPTEN_KEEPALIVE
 int32_t run_skolem(size_t data_len) {
-    return run_pipeline(data_len, transform_skolemize);
+    return run_pipeline(data_len, transform_skolemize, ast_to_formula);
 }
 
 EMSCRIPTEN_KEEPALIVE
 int32_t run_push_universals(size_t data_len) {
-    return run_pipeline(data_len, transform_push_universals);
+    return run_pipeline(data_len, transform_push_universals, ast_to_formula);
 }
 
 EMSCRIPTEN_KEEPALIVE
 int32_t run_distribute(size_t data_len) {
-    return run_pipeline(data_len, transform_distribute);
+    return run_pipeline(data_len, transform_distribute, ast_to_formula);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int32_t run_to_sets(size_t data_len) {
+    return run_pipeline(data_len, NULL, ast_to_cnf_sets);
 }

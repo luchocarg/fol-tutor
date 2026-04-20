@@ -139,6 +139,32 @@ void test_push_universals(void) {
     printf("[OK] Test: Push Universals\n");
 }
 
+void test_cnf_to_sets(void) {
+    SymbolTable* st = create_symbol_table();
+    char buffer[1024];
+
+    ASTNode* n1 = test_parse("P ∧ Q", st);
+    buffer[0] = '\0';
+    ast_to_cnf_sets(n1, buffer);
+    assert(strcmp(buffer, "{{P}, {Q}}") == 0);
+    free_ast(n1);
+
+    ASTNode* n2 = test_parse("P ∨ Q", st);
+    buffer[0] = '\0';
+    ast_to_cnf_sets(n2, buffer);
+    assert(strcmp(buffer, "{{P, Q}}") == 0);
+    free_ast(n2);
+
+    ASTNode* n3 = test_parse("P ∧ (F ∨ K) ∧ (F ∨ M)", st);
+    buffer[0] = '\0';
+    ast_to_cnf_sets(n3, buffer);
+    assert(strcmp(buffer, "{{P}, {F, K}, {F, M}}") == 0);
+    free_ast(n3);
+
+    free_symbol_table(st);
+    printf("[OK] Test: CNF Set Notation Output\n");
+}
+
 void run_transform_tests(void) {
     printf("Running Transformation Tests...\n");
 
@@ -157,6 +183,8 @@ void run_transform_tests(void) {
     test_cnf_distribution();
 
     test_push_universals();
+
+    test_cnf_to_sets();
 
     printf("[OK] All Transformation modules finished.\n");
 }

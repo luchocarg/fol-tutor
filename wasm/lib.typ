@@ -1,6 +1,6 @@
 #let logic = plugin("plugin.wasm")
 
-#let test = "forall X. forall X. exists Z. (P(X) and (F(f(X)) or (K and M(X))))"
+#let test = "∀C. (V(C) ∨ ∃E. P(E, C))"
 #eval("$" + test + "$")
 
 #let test = str(logic.run_alpha(bytes(test)))
@@ -21,5 +21,5 @@
 #let test = str(logic.run_push_universals(bytes(test)))
 #eval("$" + test + "$")
 
-#let test = str(logic.run_skolem(bytes("∀X.∃Y.P(X,Y)")))
+#let test = str(logic.run_to_sets(bytes(test)))
 #eval("$" + test + "$")

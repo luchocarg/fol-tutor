@@ -49,6 +49,7 @@ ASTNode* create_unary_node(TokenType op, ASTNode* child);
 void free_ast(ASTNode* node);
 void ast_to_sexpr(ASTNode* n, char* buf);
 
+void ast_to_cnf_sets(ASTNode* n, char* buf);
 Term* create_term(TermType type);
 Term* create_variable_term(const char* name);
 void free_term(Term* t);
