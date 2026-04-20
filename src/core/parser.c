@@ -1,7 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
 #include <stdlib.h>
-#include "parser.h"
+#include "core/parser.h"
 
 ASTNode* parse_formula(Parser* p) {
     ASTNode* node = parse_implication(p);

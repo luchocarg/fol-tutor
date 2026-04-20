@@ -8,10 +8,11 @@ TEST_DIR     := tests
 OBJ_DIR      := obj
 BIN          := testing
 
-SRCS         := $(wildcard $(SRC_DIR)/*.c)
-TEST_SRCS    := $(wildcard $(TEST_DIR)/*.c)
-OBJS         := $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
-TEST_OBJS    := $(TEST_SRCS:$(TEST_DIR)/%.c=$(OBJ_DIR)/%.o)
+SRCS         := $(shell find $(SRC_DIR) -name "*.c")
+TEST_SRCS    := $(shell find $(TEST_DIR) -name "*.c")
+
+OBJS         := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
+TEST_OBJS    := $(patsubst $(TEST_DIR)/%.c, $(OBJ_DIR)/%.o, $(TEST_SRCS))
 
 EMCC         := emcc
 WASM_DIR     := wasm
@@ -32,21 +33,21 @@ EMCC_FLAGS   := -O3 -Iinclude \
 all: $(BIN)
 
 $(BIN): $(OBJS) $(TEST_OBJS)
+	@echo "Enlazando $@..."
 	$(CC) $(CFLAGS) $^ -o $@
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/%.o: $(TEST_DIR)/%.c | $(OBJ_DIR)
+$(OBJ_DIR)/%.o: $(TEST_DIR)/%.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
-
-$(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
 
 wasm:
 	@mkdir -p $(WASM_DIR)
 	$(EMCC) $(EMCC_FLAGS) $(WASM_SRC) $(SRCS) -o $(WASM_OUT)
-	
+    
 test: all
 	./$(BIN)
 

@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "transform.h"
-#include "ast.h"
+#include "core/ast.h"
 
 static char* make_fresh_name(int id) {
     char buf[32];

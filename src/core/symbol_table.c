@@ -1,7 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdlib.h>
 #include <string.h>
-#include "symbol_table.h"
+#include "core/symbol_table.h"
 
 SymbolTable* create_symbol_table(void) {
     SymbolTable* table = (SymbolTable*)malloc(sizeof(SymbolTable));

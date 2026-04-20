@@ -1,9 +1,9 @@
 #include <emscripten.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../include/lexer.h"
-#include "../include/ast.h"
-#include "../include/parser.h"
+#include "../include/core/lexer.h"
+#include "../include/core/ast.h"
+#include "../include/core/parser.h"
 #include "../include/transform.h"
 #include "../include/wasm_plugin.h"
 

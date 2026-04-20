@@ -1,8 +1,8 @@
 #ifndef TESTS_H
 #define TESTS_H
 
-#include "lexer.h"
-#include "parser.h"
+#include "core/lexer.h"
+#include "core/parser.h"
 #include "transform.h"
 #include <stdlib.h>
 #include <assert.h>

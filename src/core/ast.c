@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "ast.h"
+#include "core/ast.h"
 
 Term* create_term(TermType type) {
     Term* t = (Term*)malloc(sizeof(Term));
