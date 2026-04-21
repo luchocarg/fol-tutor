@@ -6,6 +6,8 @@
 #include "../include/core/ast.h"
 #include "../include/core/parser.h"
 #include "../include/transform.h"
+#include "../include/mgu.h"
+#include "../include/core/cnf.h"
 #include "../include/wasm_plugin.h"
 
 typedef ASTNode* (*TransformStep)(ASTNode*);
@@ -53,6 +55,25 @@ static ASTNode* wrap_alpha(ASTNode* n) {
     return n;
 }
 
+static void mgu_output_format(ASTNode* root, char* output_str) {
+    if (root && root->type == NODE_BINARY && root->op == TOKEN_AND) {
+        Literal* l1 = extract_literal_from_node(root->left);
+        Literal* l2 = extract_literal_from_node(root->right);
+
+        if (l1 && l2) {
+            calculate_mgu_string(l1, l2, output_str);
+        } else {
+            strcpy(output_str, "Error: invalid literals.");
+        }
+
+        free_literal(l1);
+        free_literal(l2);
+    } else {
+        strcpy(output_str, "Error: expected 'Literal1 ∧ Literal2'");
+    }
+}
+
+
 EMSCRIPTEN_KEEPALIVE
 int32_t run_remove_implications(size_t data_len) {
     return run_pipeline(data_len, transform_remove_implications, ast_to_formula);
@@ -92,4 +113,9 @@ int32_t run_distribute(size_t data_len) {
 EMSCRIPTEN_KEEPALIVE
 int32_t run_to_sets(size_t data_len) {
     return run_pipeline(data_len, NULL, ast_to_cnf_sets);
+}
+
+EMSCRIPTEN_KEEPALIVE
+int32_t run_calculate_mgu(size_t data_len) {
+    return run_pipeline(data_len, NULL, mgu_output_format);
 }

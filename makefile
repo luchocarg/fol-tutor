@@ -33,7 +33,7 @@ EMCC_FLAGS   := -O3 -Iinclude \
 all: $(BIN)
 
 $(BIN): $(OBJS) $(TEST_OBJS)
-	@echo "Enlazando $@..."
+	@echo "Linking $@..."
 	$(CC) $(CFLAGS) $^ -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c

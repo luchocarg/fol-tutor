@@ -94,7 +94,7 @@ void test_pnf_multiple_extraction(void) {
     
     free_ast(n);
     free_symbol_table(st);
-    printf("[OK] Test: PNF Multiple Extraction (Priority Optimized)\n");
+    printf("[OK] Test: PNF Multiple Extraction\n");
 }
 
 void test_skolem_basic(void) {
