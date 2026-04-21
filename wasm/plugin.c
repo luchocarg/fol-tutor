@@ -54,6 +54,12 @@ static ASTNode* wrap_alpha(ASTNode* n) {
 }
 
 EMSCRIPTEN_KEEPALIVE
+int32_t run_remove_implications(size_t data_len) {
+    return run_pipeline(data_len, transform_remove_implications, ast_to_formula);
+}
+
+
+EMSCRIPTEN_KEEPALIVE
 int32_t run_nnf(size_t data_len) {
     return run_pipeline(data_len, transform_to_nnf, ast_to_formula);
 }

@@ -89,11 +89,12 @@ void test_pnf_multiple_extraction(void) {
 
     ASTNode* n = test_parse("(∀X_1.P(X_1)) ∧ (∃X_2.Q(X_2))", st);
     n = transform_to_pnf(n);
-    assert_ast(n, "(∀ X_1 (∃ X_2 (∧ (P X_1) (Q X_2))))");
+
+    assert_ast(n, "(∃ X_2 (∀ X_1 (∧ (P X_1) (Q X_2))))");
     
     free_ast(n);
     free_symbol_table(st);
-    printf("[OK] Test: PNF Multiple Extraction\n");
+    printf("[OK] Test: PNF Multiple Extraction (Priority Optimized)\n");
 }
 
 void test_skolem_basic(void) {
