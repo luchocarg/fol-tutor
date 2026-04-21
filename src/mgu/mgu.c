@@ -186,3 +186,26 @@ void calculate_mgu_string(Literal* l1, Literal* l2, char* output_buffer) {
 
     free_substitution(s);
 }
+
+Clause* create_resolvent(Clause* c1, int index1, Clause* c2, int index2, Substitution* sigma) {
+    Clause* res = malloc(sizeof(Clause));
+    res->capacity = (c1->count + c2->count);
+    res->count = 0;
+    res->literals = malloc((size_t)res->capacity * sizeof(Literal*));
+
+    for (int i = 0; i < c1->count; i++) {
+        if (i == index1) continue;
+        Literal* lit = copy_literal(c1->literals[i]);
+        apply_substitution_to_literal(lit, sigma);
+        res->literals[res->count++] = lit;
+    }
+
+    for (int i = 0; i < c2->count; i++) {
+        if (i == index2) continue;
+        Literal* lit = copy_literal(c2->literals[i]);
+        apply_substitution_to_literal(lit, sigma);
+        res->literals[res->count++] = lit;
+    }
+
+    return res;
+}

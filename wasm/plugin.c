@@ -119,3 +119,46 @@ EMSCRIPTEN_KEEPALIVE
 int32_t run_calculate_mgu(size_t data_len) {
     return run_pipeline(data_len, NULL, mgu_output_format);
 }
+
+static void resolution_output_format(ASTNode* root, char* output_str) {
+    if (root && root->type == NODE_BINARY && root->op == TOKEN_AND) {
+        ClauseSet* set = ast_to_clause_set(root);
+        if (set->count < 2) {
+            strcpy(output_str, "Error: Two clauses are required.");
+            free_clause_set(set);
+            return;
+        }
+
+        Clause* c1 = set->clauses[0];
+        Clause* c2 = set->clauses[1];
+        bool found = false;
+
+        for (int i = 0; i < c1->count && !found; i++) {
+            for (int j = 0; j < c2->count && !found; j++) {
+                Literal* l1 = c1->literals[i];
+                Literal* l2 = c2->literals[j];
+
+                if (l1->is_negative != l2->is_negative) {
+                    bool mgu_success;
+                    Substitution* sigma = calculate_mgu(l1, l2, &mgu_success);
+
+                    if (mgu_success) {
+                        Clause* res = create_resolvent(c1, i, c2, j, sigma);
+                        clause_to_formula(res, output_str);
+                        free_clause(res);
+                        free_substitution(sigma);
+                        found = true;
+                    }
+                }
+            }
+        }
+
+        if (!found) strcpy(output_str, "No solution has been found.");
+        free_clause_set(set);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+int32_t run_resolve(size_t data_len) {
+    return run_pipeline(data_len, NULL, resolution_output_format);
+}

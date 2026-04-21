@@ -34,5 +34,10 @@ ClauseSet* ast_to_clause_set(ASTNode* matrix_root);
 Clause* get_clause(ClauseSet* set, int index);
 Literal* get_literal(Clause* clause, int index);
 
+Literal* copy_literal(Literal* src);
+
+void free_clause(Clause* c);
+
+void clause_to_formula(Clause* c, char* buf);
 
 #endif

@@ -140,3 +140,48 @@ void free_literal(Literal* l) {
     
     free(l);
 }
+
+Literal* copy_literal(Literal* src) {
+    if (!src) return NULL;
+    Literal* dst = malloc(sizeof(Literal));
+    dst->is_negative = src->is_negative;
+    dst->predicate_name = strdup(src->predicate_name);
+    dst->arity = src->arity;
+    dst->args = malloc((size_t)dst->arity * sizeof(Term*));
+    for (int i = 0; i < dst->arity; i++) {
+        dst->args[i] = copy_term(src->args[i]);
+    }
+    return dst;
+}
+
+void free_clause(Clause* c) {
+    if (!c) return;
+    for (int i = 0; i < c->count; i++) free_literal(c->literals[i]);
+    free(c->literals);
+    free(c);
+}
+
+void clause_to_formula(Clause* c, char* buf) {
+    if (c->count == 0) {
+        strcat(buf, "⊥");
+        return;
+    }
+    strcat(buf, "{");
+    for (int i = 0; i < c->count; i++) {
+        Literal* l = c->literals[i];
+        if (l->is_negative) strcat(buf, "¬");
+        strcat(buf, l->predicate_name);
+        if (l->arity > 0) {
+            strcat(buf, "(");
+            for (int k = 0; k < l->arity; k++) {
+                char t_buf[256] = "";
+                term_to_formula(l->args[k], t_buf);
+                strcat(buf, t_buf);
+                if (k < l->arity - 1) strcat(buf, ", ");
+            }
+            strcat(buf, ")");
+        }
+        if (i < c->count - 1) strcat(buf, ", ");
+    }
+    strcat(buf, "}");
+}
