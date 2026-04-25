@@ -57,5 +57,6 @@ Term* create_variable_term(const char* name);
 void free_term(Term* t);
 void term_to_sexpr(Term* t, char* buf);
 void term_to_json(Term* t, char* buf);
+void ast_to_json(ASTNode* n, char* buf);
 
 #endif

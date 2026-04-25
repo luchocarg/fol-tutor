@@ -121,6 +121,11 @@ int32_t run_to_sets(size_t data_len) {
     return run_generic_transform(data_len, NULL, ast_to_cnf_sets);
 }
 
+EMSCRIPTEN_KEEPALIVE
+int32_t run_to_json(size_t data_len) {
+    return run_generic_transform(data_len, NULL, ast_to_json);
+}
+
 static void mgu_output_format(ASTNode* root, char* output_str) {
     if (root && root->type == NODE_BINARY && root->op == TOKEN_AND) {
         Literal* l1 = extract_literal_from_node(root->left);

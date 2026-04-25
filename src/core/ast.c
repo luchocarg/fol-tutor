@@ -239,6 +239,49 @@ void ast_to_sexpr(ASTNode* n, char* buf) {
     ast_to_sexpr_ptr(n, buf + strlen(buf));
 }
 
+static char* ast_to_json_ptr(ASTNode* n, char* p) {
+    if (!n) return p;
+    p += sprintf(p, "{\"type\":\"");
+    switch (n->type) {
+        case NODE_ATOM:
+            p += sprintf(p, "atom\",\"name\":\"%s\"", n->name ? n->name : "");
+            if (n->arity > 0) {
+                p += sprintf(p, ",\"terms\":[");
+                for (int i = 0; i < n->arity; i++) {
+                    p = term_to_json_ptr(n->terms[i], p);
+                    if (i < n->arity - 1) p += sprintf(p, ",");
+                }
+                p += sprintf(p, "]");
+            }
+            break;
+        case NODE_QUANTIFIER:
+            p += sprintf(p, "quantifier\",\"op\":\"%s\",\"var\":\"%s\",\"body\":", 
+                n->op == TOKEN_FORALL ? "forall" : "exists", n->name ? n->name : "");
+            p = ast_to_json_ptr(n->left, p);
+            break;
+        case NODE_UNARY:
+            p += sprintf(p, "unary\",\"op\":\"not\",\"body\":");
+            p = ast_to_json_ptr(n->left, p);
+            break;
+        case NODE_BINARY:
+            p += sprintf(p, "binary\",\"op\":\"%s\",\"left\":", 
+                n->op == TOKEN_AND ? "and" : n->op == TOKEN_OR ? "or" : "implies");
+            p = ast_to_json_ptr(n->left, p);
+            p += sprintf(p, ",\"right\":");
+            p = ast_to_json_ptr(n->right, p);
+            break;
+        case NODE_FALSUM:
+            p += sprintf(p, "falsum\"");
+            break;
+    }
+    p += sprintf(p, "}");
+    return p;
+}
+
+void ast_to_json(ASTNode* n, char* buf) {
+    ast_to_json_ptr(n, buf + strlen(buf));
+}
+
 ASTNode* create_unary_node(TokenType op, ASTNode* child) {
     ASTNode* node = create_node(NODE_UNARY);
     if (!node) return NULL;
