@@ -1,19 +1,17 @@
 #include "tests.h"
+#include "core/cnf.h"
 #include <stdio.h>
 
 static ASTNode* test_parse(const char* input, SymbolTable* st) {
-    Lexer l = {input, 0};
-    Parser p = {&l, st};
+    Lexer l = { .source = input, .cursor = 0 };
+    Parser p = { .l = &l, .st = st, .depth = 0 };
     return parse_formula(&p);
 }
-
 void test_transform_simple_implication(void) {
     SymbolTable* st = create_symbol_table();
     ASTNode* n = test_parse("P => Q", st);
-    
     n = transform_remove_implications(n);
     assert_ast(n, "(∨ (¬ P) Q)");
-    
     free_ast(n);
     free_symbol_table(st);
     printf("[OK] Test: Simple Implication Transformation\n");
@@ -56,14 +54,14 @@ void test_nnf_de_morgan(void) {
 void test_nnf_quantifiers(void) {
     SymbolTable* st = create_symbol_table();
 
-    ASTNode* n1 = test_parse("¬∀X.P(X)", st);
+    ASTNode* n1 = test_parse("¬∀?x.P(?x)", st);
     n1 = transform_to_nnf(n1);
-    assert_ast(n1, "(∃ X (¬ (P X)))");
+    assert_ast(n1, "(∃ x (¬ (P x)))");
     free_ast(n1);
 
-    ASTNode* n2 = test_parse("¬∃X.P(X)", st);
+    ASTNode* n2 = test_parse("¬∃?x.P(?x)", st);
     n2 = transform_to_nnf(n2);
-    assert_ast(n2, "(∀ X (¬ (P X)))");
+    assert_ast(n2, "(∀ x (¬ (P x)))");
     free_ast(n2);
 
     free_symbol_table(st);
@@ -73,12 +71,11 @@ void test_nnf_quantifiers(void) {
 void test_alpha_rename_nested_scopes(void) {
     SymbolTable* st = create_symbol_table();
 
-    ASTNode* n = test_parse("∀X.(P(X) ∧ ∃X.Q(X))", st);
+    ASTNode* n = test_parse("∀?x.(P(?x) ∧ ∃?x.Q(?x))", st);
     transform_reset_alpha_counter();
     transform_alpha_rename(n, NULL);
-    
-    assert_ast(n, "(∀ X_1 (∧ (P X_1) (∃ X_2 (Q X_2))))");
-    
+    assert_ast(n, "(∀ x_1 (∧ (P x_1) (∃ x_2 (Q x_2))))");
+
     free_ast(n);
     free_symbol_table(st);
     printf("[OK] Test: Alpha Renaming Nested Scopes\n");
@@ -87,10 +84,10 @@ void test_alpha_rename_nested_scopes(void) {
 void test_pnf_multiple_extraction(void) {
     SymbolTable* st = create_symbol_table();
 
-    ASTNode* n = test_parse("(∀X_1.P(X_1)) ∧ (∃X_2.Q(X_2))", st);
+    ASTNode* n = test_parse("(∀?x.P(?x)) ∧ (∃?y.Q(?y))", st);
     n = transform_to_pnf(n);
 
-    assert_ast(n, "(∃ X_2 (∀ X_1 (∧ (P X_1) (Q X_2))))");
+    assert_ast(n, "(∃ y (∀ x (∧ (P x) (Q y))))");
     
     free_ast(n);
     free_symbol_table(st);
@@ -100,14 +97,14 @@ void test_pnf_multiple_extraction(void) {
 void test_skolem_basic(void) {
     SymbolTable* st = create_symbol_table();
     
-    ASTNode* n1 = test_parse("∃X.P(X)", st);
+    ASTNode* n1 = test_parse("∃?x.P(?x)", st);
     n1 = transform_skolemize(n1);
-    assert_ast(n1, "(P f_1)"); 
+    assert_ast(n1, "(P f_1)");
     free_ast(n1);
 
-    ASTNode* n2 = test_parse("∀X. ∃Y. Q(X, Y)", st);
+    ASTNode* n2 = test_parse("∀?x. ∃?y. Q(?x, ?y)", st);
     n2 = transform_skolemize(n2);
-    assert_ast(n2, "(∀ X (Q X (f_1 X)))"); 
+    assert_ast(n2, "(∀ x (Q x (f_1 x)))");
     free_ast(n2);
 
     free_symbol_table(st);
@@ -119,7 +116,6 @@ void test_cnf_distribution(void) {
 
     ASTNode* n = test_parse("P ∨ (Q ∧ R)", st);
     n = transform_distribute(n);
-    
     assert_ast(n, "(∧ (∨ P Q) (∨ P R))");
     
     free_ast(n);
@@ -130,10 +126,9 @@ void test_cnf_distribution(void) {
 void test_push_universals(void) {
     SymbolTable* st = create_symbol_table();
 
-    ASTNode* n = test_parse("∀X.(P(X) ∧ Q(X))", st);
+    ASTNode* n = test_parse("∀?x.(P(?x) ∧ Q(?x))", st);
     n = transform_push_universals(n);
-    
-    assert_ast(n, "(∧ (∀ X (P X)) (∀ X (Q X)))");
+    assert_ast(n, "(∧ (∀ x (P x)) (∀ x (Q x)))");
     
     free_ast(n);
     free_symbol_table(st);
@@ -171,20 +166,13 @@ void run_transform_tests(void) {
 
     test_transform_simple_implication();
     test_transform_nested_implication();
-    
     test_nnf_de_morgan();
     test_nnf_quantifiers();
-
     test_alpha_rename_nested_scopes();
-
     test_pnf_multiple_extraction();
-
     test_skolem_basic();
-
     test_cnf_distribution();
-
     test_push_universals();
-
     test_cnf_to_sets();
 
     printf("[OK] All Transformation modules finished.\n");

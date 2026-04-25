@@ -9,6 +9,7 @@ int main(void) {
     run_transform_tests();
     run_cnf_tests();
     run_mgu_tests();
+    run_checkers_tests();
 
     printf("\n=== ALL TESTS PASSED ===\n");
     return 0;

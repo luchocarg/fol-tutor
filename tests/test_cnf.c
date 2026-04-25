@@ -7,16 +7,15 @@
 #include <assert.h>
 
 static ASTNode* test_parse(const char* input, SymbolTable* st) {
-    Lexer l = {input, 0};
-    Parser p = {&l, st};
+    Lexer l = { .source = input, .cursor = 0 };
+    Parser p = { .l = &l, .st = st, .depth = 0 };
     return parse_formula(&p);
 }
 
 void test_cnf_single_clause(void) {
     SymbolTable* st = create_symbol_table();
     
-    // Matriz: P(X_1, X_2) ∨ ¬Q(f_1(X_3))
-    ASTNode* ast = test_parse("P(X_1, X_2) ∨ ¬Q(f_1(X_3))", st);
+    ASTNode* ast = test_parse("P(?x_1, ?x_2) ∨ ¬Q(f_1(?x_3))", st);
     ClauseSet* set = ast_to_clause_set(ast);
     
     assert(set->count == 1);
@@ -24,16 +23,14 @@ void test_cnf_single_clause(void) {
     assert(c0 != NULL);
     assert(c0->count == 2);
     
-    // Verificación Literal 0
     Literal* l0 = get_literal(c0, 0);
     assert(l0 != NULL);
     assert(strcmp(l0->predicate_name, "P") == 0);
     assert(l0->is_negative == false);
     assert(l0->arity == 2);
-    assert(l0->args[0]->type == TERM_VARIABLE);
-    assert(strcmp(l0->args[0]->name, "X_1") == 0);
+    assert(l0->args[0]->type == TERM_VARIABLE);   
+    assert(strcmp(l0->args[0]->name, "?x_1") == 0);
     
-    // Verificación Literal 1
     Literal* l1 = get_literal(c0, 1);
     assert(l1 != NULL);
     assert(strcmp(l1->predicate_name, "Q") == 0);
@@ -41,6 +38,7 @@ void test_cnf_single_clause(void) {
     assert(l1->arity == 1);
     assert(l1->args[0]->type == TERM_FUNCTION);
     assert(strcmp(l1->args[0]->name, "f_1") == 0);
+    assert(l1->args[0]->args[0]->type == TERM_VARIABLE);
     
     free_clause_set(set);
     free_ast(ast);
@@ -51,7 +49,7 @@ void test_cnf_single_clause(void) {
 void test_cnf_multiple_clauses(void) {
     SymbolTable* st = create_symbol_table();
     
-    ASTNode* ast = test_parse("(P(X_1) ∨ Q(X_2)) ∧ ¬R(X_3)", st);
+    ASTNode* ast = test_parse("(P(?x_1) ∨ Q(?x_2)) ∧ ¬R(?x_3)", st);
     ClauseSet* set = ast_to_clause_set(ast);
     
     assert(set->count == 2);
@@ -77,7 +75,7 @@ void test_cnf_multiple_clauses(void) {
 void test_cnf_getters_out_of_bounds(void) {
     SymbolTable* st = create_symbol_table();
     
-    ASTNode* ast = test_parse("P(X_1)", st);
+    ASTNode* ast = test_parse("P(?x_1)", st);
     ClauseSet* set = ast_to_clause_set(ast);
     
     assert(get_clause(set, 1) == NULL);
@@ -96,16 +94,16 @@ void test_cnf_getters_out_of_bounds(void) {
 void test_cnf_deep_copy_isolation(void) {
     SymbolTable* st = create_symbol_table();
     
-    ASTNode* ast = test_parse("P(X_1) ∧ P(X_1)", st);
+    ASTNode* ast = test_parse("P(?x_1) ∧ P(?x_1)", st);
     ClauseSet* set = ast_to_clause_set(ast);
     
     Literal* l0 = get_literal(get_clause(set, 0), 0);
     Literal* l1 = get_literal(get_clause(set, 1), 0);
     
     free(l0->args[0]->name);
-    l0->args[0]->name = strdup("X_MODIFIED");
+    l0->args[0]->name = strdup("?x_MODIFIED");
     
-    assert(strcmp(l1->args[0]->name, "X_1") == 0);
+    assert(strcmp(l1->args[0]->name, "?x_1") == 0);
     
     free_clause_set(set);
     free_ast(ast);

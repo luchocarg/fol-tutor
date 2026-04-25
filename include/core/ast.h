@@ -38,9 +38,11 @@ struct ASTNode {
 };
 
 
+// deepcopy functions
 Term* copy_term(Term* src);
 ASTNode* copy_ast(ASTNode* src);
 
+// to readable strings
 void ast_to_formula(ASTNode* n, char* buf);
 void term_to_formula(Term* t, char* buf);
 
@@ -49,10 +51,11 @@ ASTNode* create_unary_node(TokenType op, ASTNode* child);
 void free_ast(ASTNode* node);
 void ast_to_sexpr(ASTNode* n, char* buf);
 
-void ast_to_cnf_sets(ASTNode* n, char* buf);
+// lifecycle and serialization
 Term* create_term(TermType type);
 Term* create_variable_term(const char* name);
 void free_term(Term* t);
 void term_to_sexpr(Term* t, char* buf);
+void term_to_json(Term* t, char* buf);
 
 #endif

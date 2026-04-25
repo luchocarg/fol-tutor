@@ -14,5 +14,8 @@ WASM_IMPORT("wasm_minimal_protocol_write_args_to_buffer")
 void wasm_read_args(uint8_t *ptr);
 
 WASM_EXPORT int32_t run_cnf_transform(size_t arg_len);
+WASM_EXPORT int32_t run_calculate_mgu_trace(size_t arg_len);
+WASM_EXPORT int32_t run_user_factor(size_t arg_len);
+WASM_EXPORT int32_t run_auto_resolve(size_t arg_len);
 
 #endif

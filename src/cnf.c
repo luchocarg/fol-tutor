@@ -2,6 +2,11 @@
 #include "core/cnf.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+
+static int clause_id_counter = 0;
+void reset_clause_id_counter(void) { clause_id_counter = 0; }
+int get_next_clause_id(void) { return clause_id_counter++; }
 
 ClauseSet* create_clause_set(void) {
     ClauseSet* set = malloc(sizeof(ClauseSet));
@@ -12,12 +17,15 @@ ClauseSet* create_clause_set(void) {
     return set;
 }
 
-static Clause* create_clause(void) {
+Clause* create_empty_clause(void) {
     Clause* c = malloc(sizeof(Clause));
     if (!c) return NULL;
     c->capacity = 8;
     c->count = 0;
     c->literals = malloc((size_t)c->capacity * sizeof(Literal*));
+    c->id = -1; // Unassigned
+    c->parent1 = NULL;
+    c->parent2 = NULL;
     return c;
 }
 
@@ -26,6 +34,7 @@ static void add_clause(ClauseSet* set, Clause* c) {
         set->capacity *= 2;
         set->clauses = realloc(set->clauses, (size_t)set->capacity * sizeof(Clause*));
     }
+    if (c->id == -1) c->id = get_next_clause_id();
     set->clauses[set->count++] = c;
 }
 
@@ -74,11 +83,15 @@ static void extract_disjunction(ASTNode* node, Clause* current_clause) {
 
 static void process_matrix(ASTNode* node, ClauseSet* set) {
     if (!node) return;
+    if (node->type == NODE_QUANTIFIER && node->op == TOKEN_FORALL) {
+        process_matrix(node->left, set);
+        return;
+    }
     if (node->type == NODE_BINARY && node->op == TOKEN_AND) {
         process_matrix(node->left, set);
         process_matrix(node->right, set);
     } else {
-        Clause* new_clause = create_clause();
+        Clause* new_clause = create_empty_clause();
         extract_disjunction(node, new_clause);
         add_clause(set, new_clause);
     }
@@ -103,22 +116,7 @@ Literal* get_literal(Clause* clause, int index) {
 void free_clause_set(ClauseSet* set) {
     if (!set) return;
     for (int i = 0; i < set->count; i++) {
-        Clause* c = set->clauses[i];
-        if (c) {
-            for (int j = 0; j < c->count; j++) {
-                Literal* l = c->literals[j];
-                if (l) {
-                    free(l->predicate_name);
-                    for (int k = 0; k < l->arity; k++) {
-                        free_term(l->args[k]); 
-                    }
-                    free(l->args);
-                    free(l);
-                }
-            }
-            free(c->literals);
-            free(c);
-        }
+        free_clause(set->clauses[i]);
     }
     free(set->clauses);
     free(set);
@@ -126,18 +124,11 @@ void free_clause_set(ClauseSet* set) {
 
 void free_literal(Literal* l) {
     if (!l) return;
-    
-    if (l->predicate_name) {
-        free(l->predicate_name);
-    }
-    
+    if (l->predicate_name) free(l->predicate_name);
     if (l->args) {
-        for (int i = 0; i < l->arity; i++) {
-            free_term(l->args[i]); 
-        }
+        for (int i = 0; i < l->arity; i++) free_term(l->args[i]);
         free(l->args);
     }
-    
     free(l);
 }
 
@@ -161,27 +152,66 @@ void free_clause(Clause* c) {
     free(c);
 }
 
-void clause_to_formula(Clause* c, char* buf) {
+void clause_to_formula_sep(Clause* c, const char* sep, char* buf) {
+    char* p = buf + strlen(buf);
     if (c->count == 0) {
-        strcat(buf, "⊥");
+        sprintf(p, "□");
         return;
     }
-    strcat(buf, "{");
     for (int i = 0; i < c->count; i++) {
         Literal* l = c->literals[i];
-        if (l->is_negative) strcat(buf, "¬");
-        strcat(buf, l->predicate_name);
+        if (l->is_negative) p += sprintf(p, "¬");
+        p += sprintf(p, "%s", l->predicate_name);
         if (l->arity > 0) {
-            strcat(buf, "(");
+            p += sprintf(p, "(");
             for (int k = 0; k < l->arity; k++) {
-                char t_buf[256] = "";
-                term_to_formula(l->args[k], t_buf);
-                strcat(buf, t_buf);
-                if (k < l->arity - 1) strcat(buf, ", ");
+                term_to_formula(l->args[k], p);
+                p += strlen(p);
+                if (k < l->arity - 1) p += sprintf(p, ", ");
             }
-            strcat(buf, ")");
+            p += sprintf(p, ")");
         }
-        if (i < c->count - 1) strcat(buf, ", ");
+        if (i < c->count - 1) p += sprintf(p, "%s", sep);
     }
-    strcat(buf, "}");
+}
+
+void clause_to_formula(Clause* c, char* buf) {
+    char* p = buf + strlen(buf);
+    p += sprintf(p, "{");
+    clause_to_formula_sep(c, ", ", p);
+    strcat(p, "}");
+}
+
+void clause_set_to_formula(ClauseSet* set, char* buf) {
+    char* p = buf + strlen(buf);
+    if (!set) {
+        sprintf(p, "{}");
+        return;
+    }
+    p += sprintf(p, "{");
+    for (int i = 0; i < set->count; i++) {
+        clause_to_formula(set->clauses[i], p);
+        p += strlen(p);
+        if (i < set->count - 1) p += sprintf(p, ", ");
+    }
+    sprintf(p, "}");
+}
+
+static ASTNode* strip_universals(ASTNode* n) {
+    while (n && n->type == NODE_QUANTIFIER && n->op == TOKEN_FORALL) {
+        n = n->left;
+    }
+    return n;
+}
+
+void ast_to_cnf_sets(ASTNode* n, char* buf) {
+    if (!n) {
+        buf[0] = '\0';
+        return;
+    }
+    ASTNode* matrix = strip_universals(n);
+    ClauseSet* set = ast_to_clause_set(matrix);
+    buf[0] = '\0';
+    clause_set_to_formula(set, buf);
+    free_clause_set(set);
 }

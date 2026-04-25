@@ -8,18 +8,20 @@ static int alpha_counter = 0;
 void transform_reset_alpha_counter(void) { alpha_counter = 0; }
 
 static char* make_fresh_name(int id) {
-    char buf[32];
-    int pos = 31;
+    char buf[40];
+    int pos = 39;
     buf[pos--] = '\0';
-    if (id == 0) { buf[pos--] = '0'; } 
+    if (id == 0) { buf[pos--] = '0'; }
     else {
-        while (id > 0 && pos > 2) {
-            buf[pos--] = (char)((id % 10) + '0');
-            id /= 10;
+        int tmp = id;
+        while (tmp > 0 && pos > 4) {
+            buf[pos--] = (char)((tmp % 10) + '0');
+            tmp /= 10;
         }
     }
     buf[pos--] = '_';
-    buf[pos] = 'X';
+    buf[pos--] = 'x';
+    buf[pos] = '?';
     return strdup(&buf[pos]);
 }
 

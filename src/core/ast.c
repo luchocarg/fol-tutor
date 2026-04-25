@@ -1,7 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
+#include <stdio.h>
 #include "core/ast.h"
 
 ASTNode* copy_ast(ASTNode* src) {
@@ -10,87 +10,104 @@ ASTNode* copy_ast(ASTNode* src) {
     dst->op = src->op;
     if (src->name) dst->name = strdup(src->name);
     dst->arity = src->arity;
-    
     if (src->terms) {
         dst->terms = malloc(sizeof(Term*) * (size_t)src->arity);
-        for (int i = 0; i < src->arity; i++) {
-            dst->terms[i] = copy_term(src->terms[i]);
-        }
+        for (int i = 0; i < src->arity; i++) dst->terms[i] = copy_term(src->terms[i]);
     }
-    
     dst->left = copy_ast(src->left);
     dst->right = copy_ast(src->right);
     return dst;
 }
 
-static void ast_to_formula_impl(ASTNode* n, char* buf, bool is_root) {
-    if (!n) return;
-
-    switch (n->type) {
-        case NODE_ATOM:
-            if (n->name) strcat(buf, n->name);
-            if (n->arity > 0) {
-                strcat(buf, "(");
-                for (int i = 0; i < n->arity; i++) {
-                    term_to_formula(n->terms[i], buf);
-                    if (i < n->arity - 1) strcat(buf, ", ");
-                }
-                strcat(buf, ")");
-            }
-            break;
-
-        case NODE_UNARY:
-            strcat(buf, "¬");
-            ast_to_formula_impl(n->left, buf, false);
-            break;
-
-        case NODE_BINARY:
-            if (!is_root) strcat(buf, "(");
-            
-            ast_to_formula_impl(n->left, buf, false);
-            
-            const char* op_str = (n->op == TOKEN_AND) ? " ∧ " : 
-                                 (n->op == TOKEN_OR  ? " ∨ " : " ⇒ ");
-            strcat(buf, op_str);
-            
-            ast_to_formula_impl(n->right, buf, false);
-            
-            if (!is_root) strcat(buf, ")");
-            break;
-
-        case NODE_QUANTIFIER:
-            strcat(buf, (n->op == TOKEN_FORALL ? "∀" : "∃"));
-            if (n->name) strcat(buf, n->name);
-            strcat(buf, ".");
-            ast_to_formula_impl(n->left, buf, false);
-            break;
-
-        default: break;
-    }
+static char* print_term_name_ptr(const char* name, char* p) {
+    if (name && name[0] == '?') p += sprintf(p, "%s", name + 1);
+    else if (name) p += sprintf(p, "%s", name);
+    return p;
 }
 
-void ast_to_formula(ASTNode* n, char* buf) {
-    //buf[0] = '\0';
-    ast_to_formula_impl(n, buf, true);
+static char* term_to_formula_ptr(Term* t, char* p) {
+    if (!t || !t->name) return p;
+    if (t->type == TERM_FUNCTION && t->arity > 0) {
+        p += sprintf(p, "%s(", t->name);
+        for (int i = 0; i < t->arity; i++) {
+            p = term_to_formula_ptr(t->args[i], p);
+            if (i < t->arity - 1) p += sprintf(p, ", ");
+        }
+        p += sprintf(p, ")");
+    } else {
+        p += sprintf(p, "%s", t->name);
+    }
+    return p;
 }
 
 void term_to_formula(Term* t, char* buf) {
-    if (!t || !t->name) return;
+    term_to_formula_ptr(t, buf + strlen(buf));
+}
 
-    if (t->type == TERM_FUNCTION && t->arity > 0) {
-        strcat(buf, t->name);
-        strcat(buf, "(");
+static char* term_to_json_ptr(Term* t, char* p) {
+    if (!t || !t->name) return p;
+    const char* display = (t->name[0] == '?') ? t->name + 1 : t->name;
+    const char* type_str = (t->type == TERM_VARIABLE) ? "var" :
+                           (t->arity > 0)             ? "func" : "const";
+
+    p += sprintf(p, "{\"name\":\"%s\",\"type\":\"%s\"", display, type_str);
+
+    if (t->arity > 0) {
+        p += sprintf(p, ",\"args\":[");
         for (int i = 0; i < t->arity; i++) {
-            term_to_formula(t->args[i], buf);
-            
-            if (i < t->arity - 1) {
-                strcat(buf, ", ");
-            }
+            p = term_to_json_ptr(t->args[i], p);
+            if (i < t->arity - 1) p += sprintf(p, ",");
         }
-        strcat(buf, ")");
-    } else {
-        strcat(buf, t->name);
+        p += sprintf(p, "]");
     }
+    p += sprintf(p, "}");
+    return p;
+}
+
+void term_to_json(Term* t, char* buf) {
+    term_to_json_ptr(t, buf + strlen(buf));
+}
+
+static char* ast_to_formula_impl(ASTNode* n, char* p, int is_root) {
+    if (!n) return p;
+    switch (n->type) {
+        case NODE_ATOM:
+            if (n->name) p += sprintf(p, "%s", n->name);
+            if (n->arity > 0) {
+                p += sprintf(p, "(");
+                for (int i = 0; i < n->arity; i++) {
+                    p = term_to_formula_ptr(n->terms[i], p);
+                    if (i < n->arity - 1) p += sprintf(p, ", ");
+                }
+                p += sprintf(p, ")");
+            }
+            break;
+        case NODE_UNARY:
+            p += sprintf(p, "¬");
+            p = ast_to_formula_impl(n->left, p, 0);
+            break;
+        case NODE_BINARY:
+            if (!is_root) p += sprintf(p, "(");
+            p = ast_to_formula_impl(n->left, p, 0);
+            {
+                const char* op_str = (n->op == TOKEN_AND) ? " ∧ " :
+                                     (n->op == TOKEN_OR)  ? " ∨ " : " ⇒ ";
+                p += sprintf(p, "%s", op_str);
+            }
+            p = ast_to_formula_impl(n->right, p, 0);
+            if (!is_root) p += sprintf(p, ")");
+            break;
+        case NODE_QUANTIFIER:
+            p += sprintf(p, "%s%s.", (n->op == TOKEN_FORALL ? "∀" : "∃"), (n->name ? n->name : ""));
+            p = ast_to_formula_impl(n->left, p, 0);
+            break;
+        default: break;
+    }
+    return p;
+}
+
+void ast_to_formula(ASTNode* n, char* buf) {
+    ast_to_formula_impl(n, buf + strlen(buf), 1);
 }
 
 Term* create_term(TermType type) {
@@ -105,25 +122,14 @@ Term* create_term(TermType type) {
 
 Term* copy_term(Term* src) {
     if (!src) return NULL;
-
     Term* dst = create_term(src->type);
     if (!dst) return NULL;
-
-    if (src->name) {
-        dst->name = strdup(src->name);
-    }
-
+    if (src->name) dst->name = strdup(src->name);
     dst->arity = src->arity;
-
     if (src->arity > 0 && src->args) {
         dst->args = (Term**)malloc(sizeof(Term*) * (size_t)src->arity);
-        for (int i = 0; i < src->arity; i++) {
-            dst->args[i] = copy_term(src->args[i]);
-        }
-    } else {
-        dst->args = NULL;
-    }
-
+        for (int i = 0; i < src->arity; i++) dst->args[i] = copy_term(src->args[i]);
+    } else dst->args = NULL;
     return dst;
 }
 
@@ -143,19 +149,24 @@ void free_term(Term* t) {
     free(t);
 }
 
-void term_to_sexpr(Term* t, char* buf) {
-    if (!t) return;
+static char* term_to_sexpr_ptr(Term* t, char* p) {
+    if (!t) return p;
     if (t->type == TERM_FUNCTION && t->arity > 0) {
-        strcat(buf, "(");
-        strcat(buf, t->name);
+        p += sprintf(p, "(");
+        p = print_term_name_ptr(t->name, p);
         for (int i = 0; i < t->arity; i++) {
-            strcat(buf, " ");
-            term_to_sexpr(t->args[i], buf);
+            p += sprintf(p, " ");
+            p = term_to_sexpr_ptr(t->args[i], p);
         }
-        strcat(buf, ")");
+        p += sprintf(p, ")");
     } else {
-        strcat(buf, t->name);
+        p = print_term_name_ptr(t->name, p);
     }
+    return p;
+}
+
+void term_to_sexpr(Term* t, char* buf) {
+    term_to_sexpr_ptr(t, buf + strlen(buf));
 }
 
 ASTNode* create_node(ASTNodeType type) {
@@ -172,75 +183,60 @@ ASTNode* create_node(ASTNodeType type) {
 
 void free_ast(ASTNode* node) {
     if (!node) return;
-
     free_ast(node->left);
     free_ast(node->right);
-
     if (node->terms) {
-        for (int i = 0; i < node->arity; i++) {
-            free_term(node->terms[i]);
-        }
+        for (int i = 0; i < node->arity; i++) free_term(node->terms[i]);
         free(node->terms);
     }
-
     if (node->name) free(node->name);
     free(node);
 }
 
-void ast_to_sexpr(ASTNode* n, char* buf) {
-    if (!n) return;
+static char* ast_to_sexpr_ptr(ASTNode* n, char* p) {
+    if (!n) return p;
     switch (n->type) {
         case NODE_ATOM:
-            if (n->arity > 0) {
-                strcat(buf, "(");
-            }
-            
-            if (n->name) strcat(buf, n->name);
-            
+            if (n->arity > 0) p += sprintf(p, "(");
+            if (n->name) p += sprintf(p, "%s", n->name);
             for (int i = 0; i < n->arity; i++) {
-                strcat(buf, " ");
-                term_to_sexpr(n->terms[i], buf);
+                p += sprintf(p, " ");
+                p = term_to_sexpr_ptr(n->terms[i], p);
             }
-            
-            if (n->arity > 0) {
-                strcat(buf, ")");
-            }
+            if (n->arity > 0) p += sprintf(p, ")");
             break;
-            
         case NODE_QUANTIFIER:
-            strcat(buf, "(");
-            strcat(buf, n->op == TOKEN_FORALL ? "∀" : "∃");
-            strcat(buf, " ");
-            if (n->name) strcat(buf, n->name);
-            strcat(buf, " ");
-            ast_to_sexpr(n->left, buf);
-            strcat(buf, ")");
+            p += sprintf(p, "(%s ", n->op == TOKEN_FORALL ? "∀" : "∃");
+            if (n->name) p = print_term_name_ptr(n->name, p);
+            p += sprintf(p, " ");
+            p = ast_to_sexpr_ptr(n->left, p);
+            p += sprintf(p, ")");
             break;
-            
         case NODE_UNARY:
-            strcat(buf, "(¬ ");
-            ast_to_sexpr(n->left, buf);
-            strcat(buf, ")");
+            p += sprintf(p, "(¬ ");
+            p = ast_to_sexpr_ptr(n->left, p);
+            p += sprintf(p, ")");
             break;
-            
-        case NODE_BINARY:
-            strcat(buf, "(");
-            const char* op_str = (n->op == TOKEN_AND) ? "∧" : 
-                                 (n->op == TOKEN_OR ? "∨" : "⇒");
-            strcat(buf, op_str);
-            strcat(buf, " ");
-            ast_to_sexpr(n->left, buf);
-            strcat(buf, " ");
-            ast_to_sexpr(n->right, buf);
-            strcat(buf, ")");
+        case NODE_BINARY: {
+            const char* op_str = (n->op == TOKEN_AND) ? "∧" :
+                                 (n->op == TOKEN_OR)  ? "∨" : "⇒";
+            p += sprintf(p, "(%s ", op_str);
+            p = ast_to_sexpr_ptr(n->left, p);
+            p += sprintf(p, " ");
+            p = ast_to_sexpr_ptr(n->right, p);
+            p += sprintf(p, ")");
             break;
-            
+        }
         case NODE_FALSUM:
-            strcat(buf, "⊥");
+            p += sprintf(p, "⊥");
             break;
-            
         default: break;
     }
+    return p;
+}
+
+void ast_to_sexpr(ASTNode* n, char* buf) {
+    ast_to_sexpr_ptr(n, buf + strlen(buf));
 }
 
 ASTNode* create_unary_node(TokenType op, ASTNode* child) {
@@ -250,52 +246,4 @@ ASTNode* create_unary_node(TokenType op, ASTNode* child) {
     node->left = child;
     node->right = NULL;
     return node;
-}
-
-static void print_literals_as_set(ASTNode* n, char* buf) {
-    if (!n) return;
-    
-    if (n->type == NODE_BINARY && n->op == TOKEN_OR) {
-        print_literals_as_set(n->left, buf);
-        strcat(buf, ", ");
-        print_literals_as_set(n->right, buf);
-    } else {
-        ast_to_formula(n, buf); 
-    }
-}
-
-static void collect_clauses_recursive(ASTNode* n, char* buf, int* is_first) {
-    if (!n) return;
-
-    if (n->type == NODE_BINARY && n->op == TOKEN_AND) {
-        collect_clauses_recursive(n->left, buf, is_first);
-        collect_clauses_recursive(n->right, buf, is_first);
-    } 
-    else if (n->type == NODE_QUANTIFIER) {
-        collect_clauses_recursive(n->left, buf, is_first);
-    } 
-    else {
-        if (!(*is_first)) {
-            strcat(buf, ", ");
-        }
-        strcat(buf, "{");
-        print_literals_as_set(n, buf);
-        strcat(buf, "}");
-        *is_first = 0;
-    }
-}
-
-void ast_to_cnf_sets(ASTNode* n, char* buf) {
-    if (!n) {
-        strcpy(buf, "{}");
-        return;
-    }
-    
-    buf[0] = '\0'; 
-    strcat(buf, "{");
-    
-    int is_first = 1;
-    collect_clauses_recursive(n, buf, &is_first);
-    
-    strcat(buf, "}");
 }

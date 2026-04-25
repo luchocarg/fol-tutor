@@ -60,3 +60,4 @@ dkms.conf
 .vscode/*
 testing
 .gdb_history
+typ_testing/*
