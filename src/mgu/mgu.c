@@ -135,30 +135,30 @@ static bool unify_terms_internal(Term* t1, Term* t2, Substitution** s, char* tra
 
     if (t1->type == TERM_VARIABLE) {
         if (occurs_check(t1->name, t2, *s)) {
-            trace_step(trace_buf, "Fallo de Occurs-check", t1, t2);
+            trace_step(trace_buf, "Occurs-check failure", t1, t2);
             return false;
         }
-        trace_step(trace_buf, "Asignación", t1, t2);
+        trace_step(trace_buf, "Assignment", t1, t2);
         add_substitution(s, t1->name, t2);
         return true;
     }
 
     if (t2->type == TERM_VARIABLE) {
         if (occurs_check(t2->name, t1, *s)) {
-            trace_step(trace_buf, "Fallo de Occurs-check", t2, t1);
+            trace_step(trace_buf, "Occurs-check failure", t2, t1);
             return false;
         }
-        trace_step(trace_buf, "Asignación", t2, t1);
+        trace_step(trace_buf, "Assignment", t2, t1);
         add_substitution(s, t2->name, t1);
         return true;
     }
 
     if (strcmp(t1->name, t2->name) != 0) {
-        trace_step(trace_buf, "Conflicto de símbolos", t1, t2);
+        trace_step(trace_buf, "Symbol conflict", t1, t2);
         return false;
     }
     if (t1->arity != t2->arity) {
-        trace_step(trace_buf, "Conflicto de aridad", t1, t2);
+        trace_step(trace_buf, "Arity conflict", t1, t2);
         return false;
     }
 
@@ -205,11 +205,11 @@ void calculate_mgu_trace(Literal* l1, Literal* l2, char* trace_buf) {
     trace_buf[0] = '\0';
     char* p = trace_buf;
     if (strcmp(l1->predicate_name, l2->predicate_name) != 0) {
-        sprintf(p, "Error: Nombres de predicados distintos.\n");
+        sprintf(p, "Error: Different predicate names.\n");
         return;
     }
     if (l1->arity != l2->arity) {
-        sprintf(p, "Error: Aridad distinta.\n");
+        sprintf(p, "Error: Different arity.\n");
         return;
     }
 
@@ -224,9 +224,9 @@ void calculate_mgu_trace(Literal* l1, Literal* l2, char* trace_buf) {
 
     p = trace_buf + strlen(trace_buf);
     if (success) {
-        sprintf(p, "Éxito: Unificación completada.\n");
+        sprintf(p, "Success: Unification completed.\n");
     } else {
-        sprintf(p, "Fallo: No se pudo unificar.\n");
+        sprintf(p, "Failure: Could not unify.\n");
     }
     free_substitution(s);
 }

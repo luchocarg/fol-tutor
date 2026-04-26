@@ -92,7 +92,7 @@ Clause* run_automated_resolution(ClauseSet* initial_set,
                 if (factored) {
                     if (!is_tautology(factored) && !is_duplicate(factored, head)) {
                         char* fmgu = malloc(1024);
-                        sprintf(fmgu, "Factoreo inicial de %d,%d", f1, f2);
+                        sprintf(fmgu, "Initial factoring of %d,%d", f1, f2);
                         append_node(&head, &tail, factored, fmgu);
                     } else {
                         free_clause(factored);

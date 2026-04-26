@@ -308,8 +308,8 @@ void test_mgu_trace(void) {
     calculate_mgu_trace(l1, l2, trace);
     
     assert(strlen(trace) > 0);
-    assert(strstr(trace, "Asignación") != NULL);
-    assert(strstr(trace, "Éxito") != NULL);
+    assert(strstr(trace, "Assignment") != NULL);
+    assert(strstr(trace, "Success") != NULL);
     
     free_test_literal(l1);
     free_test_literal(l2);
