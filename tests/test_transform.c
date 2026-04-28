@@ -141,19 +141,19 @@ void test_cnf_to_sets(void) {
 
     ASTNode* n1 = test_parse("P ∧ Q", st);
     buffer[0] = '\0';
-    ast_to_cnf_sets(n1, buffer);
+    ast_to_cnf_sets(n1, buffer, sizeof(buffer));
     assert(strcmp(buffer, "{{P}, {Q}}") == 0);
     free_ast(n1);
 
     ASTNode* n2 = test_parse("P ∨ Q", st);
     buffer[0] = '\0';
-    ast_to_cnf_sets(n2, buffer);
+    ast_to_cnf_sets(n2, buffer, sizeof(buffer));
     assert(strcmp(buffer, "{{P, Q}}") == 0);
     free_ast(n2);
 
     ASTNode* n3 = test_parse("P ∧ (F ∨ K) ∧ (F ∨ M)", st);
     buffer[0] = '\0';
-    ast_to_cnf_sets(n3, buffer);
+    ast_to_cnf_sets(n3, buffer, sizeof(buffer));
     assert(strcmp(buffer, "{{P}, {F, K}, {F, M}}") == 0);
     free_ast(n3);
 

@@ -14,7 +14,7 @@
 
 
 typedef ASTNode* (*TransformStep)(ASTNode*);
-typedef void (*OutputFormat)(ASTNode*, char*);
+typedef void (*OutputFormat)(ASTNode*, char*, size_t);
 
 // Helpers
 
@@ -50,14 +50,16 @@ static char* process_formula_to_string(const char* input_str, TransformStep step
             root = step(root);
         }
 
-        result_str = calloc(strlen(input_str) * 8 + 1024, sizeof(char));
+        size_t out_size = strlen(input_str) * 8 + 1024;
+        result_str = calloc(out_size, sizeof(char));
         if (result_str) {
-            format(root, result_str);
+            format(root, result_str, out_size);
         }
         free_ast(root);
     } else {
-        result_str = malloc(strlen(p.error_msg) + 16);
-        sprintf(result_str, "Error: %s", p.error_msg);
+        size_t err_size = strlen(p.error_msg) + 16;
+        result_str = malloc(err_size);
+        if (result_str) snprintf(result_str, err_size, "Error: %s", p.error_msg);
     }
 
     free_symbol_table(st);
@@ -126,19 +128,19 @@ int32_t run_to_json(size_t data_len) {
     return run_generic_transform(data_len, NULL, ast_to_json);
 }
 
-static void mgu_output_format(ASTNode* root, char* output_str) {
+static void mgu_output_format(ASTNode* root, char* output_str, size_t size) {
     if (root && root->type == NODE_BINARY && root->op == TOKEN_AND) {
         Literal* l1 = extract_literal_from_node(root->left);
         Literal* l2 = extract_literal_from_node(root->right);
         if (l1 && l2) {
-            calculate_mgu_string(l1, l2, output_str);
+            calculate_mgu_string(l1, l2, output_str, size);
         } else {
-            strcpy(output_str, "Error: invalid literals.");
+            snprintf(output_str, size, "Error: invalid literals.");
         }
         free_literal(l1);
         free_literal(l2);
     } else {
-        strcpy(output_str, "Error: expected 'Literal1 ∧ Literal2'");
+        snprintf(output_str, size, "Error: expected 'Literal1 ∧ Literal2'");
     }
 }
 
@@ -158,7 +160,7 @@ static int32_t run_property_check(size_t data_len, bool (*check_fn)(ASTNode*)) {
     
     if (!root) {
         char err[300];
-        sprintf(err, "Error: %s", p.error_msg);
+        snprintf(err, sizeof(err), "Error: %s", p.error_msg);
         send_wasm_result_str(err);
         free_symbol_table(st);
         free(input);
@@ -230,28 +232,28 @@ int32_t run_user_resolve(size_t data_len) {
                     if (ok) {
                         Clause* res = create_general_resolvent(c1, m1, l1, c2, m2, l2, sigma);
                         char mb[1024], rb[1024] = "", cb[1024] = "";
-                        calculate_simultaneous_mgu_string(sigma, mb); 
-                        clause_to_formula_sep(res, " ∨ ", rb); 
-                        clause_to_formula_sep(c2, " ∨ ", cb);
+                        calculate_simultaneous_mgu_string(sigma, mb, sizeof(mb)); 
+                        clause_to_formula_sep(res, " ∨ ", rb, sizeof(rb)); 
+                        clause_to_formula_sep(c2, " ∨ ", cb, sizeof(cb));
                         
-                        sprintf(output_str, "%s|%s|%s", mb, rb, cb);
+                        snprintf(output_str, sizeof(output_str), "%s|%s|%s", mb, rb, cb);
                         
                         free_clause(res); found = true;
                     }
                 } else if (sigma) {
                     Clause* res = create_general_resolvent(c1, m1, l1, c2, m2, l2, sigma);
-                    clause_to_formula_sep(res, " ∨ ", output_str); 
+                    clause_to_formula_sep(res, " ∨ ", output_str, sizeof(output_str)); 
                     free_clause(res); found = true;
                 }
             }
             if (sigma) free_substitution(sigma);
-            if (!found) strcpy(output_str, "Error: Resolution failed");
+            if (!found) snprintf(output_str, sizeof(output_str), "Error: Resolution failed");
             send_wasm_result_str(output_str);
         }
         free_clause_set(set);
     } else if (!root) {
         char err[300];
-        sprintf(err, "Error: %s", p.error_msg);
+        snprintf(err, sizeof(err), "Error: %s", p.error_msg);
         send_wasm_result_str(err);
     } else {
         send_wasm_result_str("Error: Input must be a conjunction of two clauses.");
@@ -275,12 +277,12 @@ int32_t run_calculate_mgu_trace(size_t data_len) {
     if (root && root->type == NODE_BINARY && root->op == TOKEN_AND) {
         Literal* l1 = extract_literal_from_node(root->left);
         Literal* l2 = extract_literal_from_node(root->right);
-        if (l1 && l2) calculate_mgu_trace(l1, l2, output_str);
-        else strcpy(output_str, "Error: invalid literals.");
+        if (l1 && l2) calculate_mgu_trace(l1, l2, output_str, sizeof(output_str));
+        else snprintf(output_str, sizeof(output_str), "Error: invalid literals.");
         free_literal(l1); free_literal(l2);
     } else if (!root) {
-        sprintf(output_str, "Error: %s", p.error_msg);
-    } else strcpy(output_str, "Error: expected 'Literal1 ∧ Literal2'");
+        snprintf(output_str, sizeof(output_str), "Error: %s", p.error_msg);
+    } else snprintf(output_str, sizeof(output_str), "Error: expected 'Literal1 ∧ Literal2'");
     send_wasm_result_str(output_str);
     if (root) free_ast(root);
     free_symbol_table(st);
@@ -312,15 +314,15 @@ int32_t run_user_factor(size_t data_len) {
             Clause* factored = factor_clause(set->clauses[0], i1, i2, &sigma);
             if (factored) {
                 char mb[1024] = "", fb[1024] = "";
-                calculate_simultaneous_mgu_string(sigma, mb);
-                clause_to_formula_sep(factored, " ∨ ", fb);
-                sprintf(output_str, "%s|%s", mb, fb);
+                calculate_simultaneous_mgu_string(sigma, mb, sizeof(mb));
+                clause_to_formula_sep(factored, " ∨ ", fb, sizeof(fb));
+                snprintf(output_str, sizeof(output_str), "%s|%s", mb, fb);
                 free_clause(factored); if (sigma) free_substitution(sigma);
-            } else strcpy(output_str, "Error: Factoring failed");
-        } else strcpy(output_str, "Error: Empty clause");
+            } else snprintf(output_str, sizeof(output_str), "Error: Factoring failed");
+        } else snprintf(output_str, sizeof(output_str), "Error: Empty clause");
         free_clause_set(set);
     } else {
-        sprintf(output_str, "Error: %s", p.error_msg);
+        snprintf(output_str, sizeof(output_str), "Error: %s", p.error_msg);
     }
     send_wasm_result_str(output_str);
     if (root) free_ast(root);
@@ -338,7 +340,9 @@ int32_t run_auto_resolve(size_t data_len) {
     SymbolTable* st = create_symbol_table();
     Parser p = { .l = &l, .st = st };
     ASTNode* root = parse_formula(&p);
-    char* output_str = malloc(65536); 
+    size_t out_max = 65536;
+    char* output_str = malloc(out_max); 
+    if (!output_str) { free_symbol_table(st); free(input); return 0; }
     output_str[0] = '\0';
     if (root) {
         reset_clause_id_counter();
@@ -356,16 +360,24 @@ int32_t run_auto_resolve(size_t data_len) {
         run_automated_resolution(set, &all_nodes, 200);
         ClauseNode* curr = all_nodes;
         char* op = output_str;
-        while (curr) {
-            op += sprintf(op, "%d:", curr->c->id);
-            clause_to_formula_sep(curr->c, " ∨ ", op);
+        char* end = output_str + out_max;
+        while (curr && op < end) {
+            int written = snprintf(op, (size_t)(end - op), "%d:", curr->c->id);
+            if (written > 0) op += (written >= (int)(end - op)) ? (end - op) : written;
+            
+            clause_to_formula_sep(curr->c, " ∨ ", op, (size_t)(end - op));
             op += strlen(op);
-            op += sprintf(op, "|%d|%d|%s", 
+
+            written = snprintf(op, (size_t)(end - op), "|%d|%d|%s", 
                 curr->c->parent1 ? curr->c->parent1->id : -1,
                 curr->c->parent2 ? curr->c->parent2->id : -1,
                 curr->mgu_str ? curr->mgu_str : "");
+            if (written > 0) op += (written >= (int)(end - op)) ? (end - op) : written;
             
-            if (curr->next) op += sprintf(op, ";");
+            if (curr->next) {
+                written = snprintf(op, (size_t)(end - op), ";");
+                if (written > 0) op += (written >= (int)(end - op)) ? (end - op) : written;
+            }
             curr = curr->next;
         }
         ClauseNode* cn = all_nodes;
@@ -381,7 +393,7 @@ int32_t run_auto_resolve(size_t data_len) {
         }
         free(set->clauses); free(set);
     } else {
-        sprintf(output_str, "Error: %s", p.error_msg);
+        snprintf(output_str, out_max, "Error: %s", p.error_msg);
     }
 
     send_wasm_result_str(output_str);

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "core/utils.h"
 
 static int clause_id_counter = 0;
 void reset_clause_id_counter(void) { clause_id_counter = 0; }
@@ -152,49 +153,59 @@ void free_clause(Clause* c) {
     free(c);
 }
 
-void clause_to_formula_sep(Clause* c, const char* sep, char* buf) {
-    char* p = buf + strlen(buf);
+void clause_to_formula_sep(Clause* c, const char* sep, char* buf, size_t size) {
+    if (size == 0) return;
+    buf[0] = '\0';
+    char* p = buf;
+    char* end = buf + size;
     if (c->count == 0) {
-        sprintf(p, "□");
+        SAFE_APPEND(p, end, "□");
         return;
     }
     for (int i = 0; i < c->count; i++) {
         Literal* l = c->literals[i];
-        if (l->is_negative) p += sprintf(p, "¬");
-        p += sprintf(p, "%s", l->predicate_name);
+        if (l->is_negative) SAFE_APPEND(p, end, "¬");
+        SAFE_APPEND(p, end, "%s", l->predicate_name);
         if (l->arity > 0) {
-            p += sprintf(p, "(");
+            SAFE_APPEND(p, end, "(");
             for (int k = 0; k < l->arity; k++) {
-                term_to_formula(l->args[k], p);
+                term_to_formula(l->args[k], p, (size_t)(end - p));
                 p += strlen(p);
-                if (k < l->arity - 1) p += sprintf(p, ", ");
+                if (k < l->arity - 1) SAFE_APPEND(p, end, ", ");
             }
-            p += sprintf(p, ")");
+            SAFE_APPEND(p, end, ")");
         }
-        if (i < c->count - 1) p += sprintf(p, "%s", sep);
+        if (i < c->count - 1) SAFE_APPEND(p, end, "%s", sep);
     }
 }
 
-void clause_to_formula(Clause* c, char* buf) {
-    char* p = buf + strlen(buf);
-    p += sprintf(p, "{");
-    clause_to_formula_sep(c, ", ", p);
-    strcat(p, "}");
+void clause_to_formula(Clause* c, char* buf, size_t size) {
+    if (size == 0) return;
+    buf[0] = '\0';
+    char* p = buf;
+    char* end = buf + size;
+    SAFE_APPEND(p, end, "{");
+    clause_to_formula_sep(c, ", ", p, (size_t)(end - p));
+    p += strlen(p);
+    SAFE_APPEND(p, end, "}");
 }
 
-void clause_set_to_formula(ClauseSet* set, char* buf) {
-    char* p = buf + strlen(buf);
+void clause_set_to_formula(ClauseSet* set, char* buf, size_t size) {
+    if (size == 0) return;
+    buf[0] = '\0';
+    char* p = buf;
+    char* end = buf + size;
     if (!set) {
-        sprintf(p, "{}");
+        SAFE_APPEND(p, end, "{}");
         return;
     }
-    p += sprintf(p, "{");
+    SAFE_APPEND(p, end, "{");
     for (int i = 0; i < set->count; i++) {
-        clause_to_formula(set->clauses[i], p);
+        clause_to_formula(set->clauses[i], p, (size_t)(end - p));
         p += strlen(p);
-        if (i < set->count - 1) p += sprintf(p, ", ");
+        if (i < set->count - 1) SAFE_APPEND(p, end, ", ");
     }
-    sprintf(p, "}");
+    SAFE_APPEND(p, end, "}");
 }
 
 static ASTNode* strip_universals(ASTNode* n) {
@@ -204,14 +215,14 @@ static ASTNode* strip_universals(ASTNode* n) {
     return n;
 }
 
-void ast_to_cnf_sets(ASTNode* n, char* buf) {
+void ast_to_cnf_sets(ASTNode* n, char* buf, size_t size) {
+    if (size == 0) return;
     if (!n) {
         buf[0] = '\0';
         return;
     }
     ASTNode* matrix = strip_universals(n);
     ClauseSet* set = ast_to_clause_set(matrix);
-    buf[0] = '\0';
-    clause_set_to_formula(set, buf);
+    clause_set_to_formula(set, buf, size);
     free_clause_set(set);
 }

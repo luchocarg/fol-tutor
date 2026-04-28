@@ -25,8 +25,8 @@ static bool are_literals_identical(Literal* l1, Literal* l2) {
     if (l1->arity != l2->arity) return false;
     for (int i = 0; i < l1->arity; i++) {
         char b1[256] = "", b2[256] = "";
-        term_to_formula(l1->args[i], b1);
-        term_to_formula(l2->args[i], b2);
+        term_to_formula(l1->args[i], b1, sizeof(b1));
+        term_to_formula(l2->args[i], b2, sizeof(b2));
         if (strcmp(b1, b2) != 0) return false;
     }
     return true;
@@ -65,8 +65,8 @@ static bool is_tautology(Clause* c) {
             bool same_args = true;
             for (int k = 0; k < a->arity && same_args; k++) {
                 char ba[256] = "", bb[256] = "";
-                term_to_formula(a->args[k], ba);
-                term_to_formula(b->args[k], bb);
+                term_to_formula(a->args[k], ba, sizeof(ba));
+                term_to_formula(b->args[k], bb, sizeof(bb));
                 if (strcmp(ba, bb) != 0) same_args = false;
             }
             if (same_args) return true;
@@ -92,7 +92,7 @@ Clause* run_automated_resolution(ClauseSet* initial_set,
                 if (factored) {
                     if (!is_tautology(factored) && !is_duplicate(factored, head)) {
                         char* fmgu = malloc(1024);
-                        sprintf(fmgu, "Initial factoring of %d,%d", f1, f2);
+                        if (fmgu) snprintf(fmgu, 1024, "Initial factoring of %d,%d", f1, f2);
                         append_node(&head, &tail, factored, fmgu);
                     } else {
                         free_clause(factored);
@@ -142,7 +142,7 @@ Clause* run_automated_resolution(ClauseSet* initial_set,
                         res->parent2 = c2;
 
                         char mgu_buf[1024] = "";
-                        calculate_simultaneous_mgu_string(sigma, mgu_buf);
+                        calculate_simultaneous_mgu_string(sigma, mgu_buf, sizeof(mgu_buf));
                         free_substitution(sigma);
 
                         if (res->count == 0) {
@@ -164,10 +164,7 @@ Clause* run_automated_resolution(ClauseSet* initial_set,
                                     if (factored) {
                                         if (!is_tautology(factored) && !is_duplicate(factored, head)) {
                                             char* fmgu = malloc(1024);
-                                            strcpy(fmgu, "factor");
-                                            char id1[12], id2[12];
-                                            sprintf(id1, "%d", f1); sprintf(id2, "%d", f2);
-                                            strcat(fmgu, id1); strcat(fmgu, ","); strcat(fmgu, id2);
+                                            if (fmgu) snprintf(fmgu, 1024, "factor%d,%d", f1, f2);
                                             append_node(&head, &tail, factored, fmgu);
                                         } else {
                                             free_clause(factored);

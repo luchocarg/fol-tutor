@@ -63,7 +63,7 @@ ASTNode* transform_skolemize_recursive(ASTNode* n, const char** univ_stack, int 
         } 
         else if (n->op == TOKEN_EXISTS) {
             Term* sk_term = malloc(sizeof(Term));
-            sk_term->type = (depth == 0) ? TERM_VARIABLE : TERM_FUNCTION;
+            sk_term->type = TERM_FUNCTION;
             sk_term->name = make_skolem_name();
             sk_term->arity = depth;
             sk_term->args = NULL;

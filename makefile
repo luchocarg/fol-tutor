@@ -19,13 +19,13 @@ WASM_DIR     := wasm
 WASM_SRC     := $(WASM_DIR)/plugin.c
 WASM_OUT     := $(WASM_DIR)/plugin.wasm
 
-EMCC_FLAGS   := -O3 -Iinclude \
+EMCC_FLAGS   := -O0 -Iinclude \
                 --no-entry \
                 -s STANDALONE_WASM \
                 -s PURE_WASI=0 \
                 -s FILESYSTEM=0 \
                 -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
-                -s EXPORTED_FUNCTIONS='["_malloc", "_free"]' \
+                -s WARN_ON_UNDEFINED_SYMBOLS=0 \
                 -s ALLOW_MEMORY_GROWTH=0 \
                 -s INITIAL_MEMORY=6553600 \
                 -s TOTAL_STACK=524288

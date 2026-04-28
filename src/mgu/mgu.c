@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "core/parser.h"
 #include "core/lexer.h"
+#include "core/utils.h"
 
 Substitution* parse_substitution_string(const char* input) {
     if (!input || strcmp(input, "auto") == 0) return NULL;
@@ -100,24 +101,24 @@ static void add_substitution(Substitution** s, const char* var_name, Term* term)
     *s = new_sub;
 }
 
-static void trace_step(char* trace_buf, const char* msg, Term* t1, Term* t2) {
-    if (!trace_buf) return;
+static void trace_step(char* trace_buf, char* end, const char* msg, Term* t1, Term* t2) {
+    if (!trace_buf || trace_buf >= end) return;
     char* p = trace_buf + strlen(trace_buf);
-    p += sprintf(p, "- %s", msg);
+    SAFE_APPEND(p, end, "- %s", msg);
     if (t1) {
-        p += sprintf(p, ": ");
-        term_to_formula(t1, p);
+        SAFE_APPEND(p, end, ": ");
+        term_to_formula(t1, p, (size_t)(end - p));
         p += strlen(p);
     }
     if (t2) {
-        p += sprintf(p, " vs ");
-        term_to_formula(t2, p);
+        SAFE_APPEND(p, end, " vs ");
+        term_to_formula(t2, p, (size_t)(end - p));
         p += strlen(p);
     }
-    sprintf(p, "\n");
+    SAFE_APPEND(p, end, "\n");
 }
 
-static bool unify_terms_internal(Term* t1, Term* t2, Substitution** s, char* trace_buf) {
+static bool unify_terms_internal(Term* t1, Term* t2, Substitution** s, char* trace_buf, char* end) {
     while (t1->type == TERM_VARIABLE) {
         Term* sub = get_substitution(*s, t1->name);
         if (!sub) break;
@@ -135,42 +136,42 @@ static bool unify_terms_internal(Term* t1, Term* t2, Substitution** s, char* tra
 
     if (t1->type == TERM_VARIABLE) {
         if (occurs_check(t1->name, t2, *s)) {
-            trace_step(trace_buf, "Occurs-check failure", t1, t2);
+            trace_step(trace_buf, end, "Occurs-check failure", t1, t2);
             return false;
         }
-        trace_step(trace_buf, "Assignment", t1, t2);
+        trace_step(trace_buf, end, "Assignment", t1, t2);
         add_substitution(s, t1->name, t2);
         return true;
     }
 
     if (t2->type == TERM_VARIABLE) {
         if (occurs_check(t2->name, t1, *s)) {
-            trace_step(trace_buf, "Occurs-check failure", t2, t1);
+            trace_step(trace_buf, end, "Occurs-check failure", t2, t1);
             return false;
         }
-        trace_step(trace_buf, "Assignment", t2, t1);
+        trace_step(trace_buf, end, "Assignment", t2, t1);
         add_substitution(s, t2->name, t1);
         return true;
     }
 
     if (strcmp(t1->name, t2->name) != 0) {
-        trace_step(trace_buf, "Symbol conflict", t1, t2);
+        trace_step(trace_buf, end, "Symbol conflict", t1, t2);
         return false;
     }
     if (t1->arity != t2->arity) {
-        trace_step(trace_buf, "Arity conflict", t1, t2);
+        trace_step(trace_buf, end, "Arity conflict", t1, t2);
         return false;
     }
 
     for (int i = 0; i < t1->arity; i++) {
-        if (!unify_terms_internal(t1->args[i], t2->args[i], s, trace_buf)) return false;
+        if (!unify_terms_internal(t1->args[i], t2->args[i], s, trace_buf, end)) return false;
     }
 
     return true;
 }
 
 bool unify_terms(Term* t1, Term* t2, Substitution** s) {
-    return unify_terms_internal(t1, t2, s, NULL);
+    return unify_terms_internal(t1, t2, s, NULL, NULL);
 }
 
 void free_substitution(Substitution* s) {
@@ -192,7 +193,7 @@ Substitution* calculate_mgu(Literal* l1, Literal* l2, bool* success) {
 
     Substitution* s = NULL;
     for (int i = 0; i < l1->arity; i++) {
-        if (!unify_terms_internal(l1->args[i], l2->args[i], &s, NULL)) {
+        if (!unify_terms_internal(l1->args[i], l2->args[i], &s, NULL, NULL)) {
             *success = false;
             free_substitution(s);
             return NULL;
@@ -201,22 +202,24 @@ Substitution* calculate_mgu(Literal* l1, Literal* l2, bool* success) {
     return s;
 }
 
-void calculate_mgu_trace(Literal* l1, Literal* l2, char* trace_buf) {
+void calculate_mgu_trace(Literal* l1, Literal* l2, char* trace_buf, size_t size) {
+    if (size == 0) return;
     trace_buf[0] = '\0';
     char* p = trace_buf;
+    char* end = trace_buf + size;
     if (strcmp(l1->predicate_name, l2->predicate_name) != 0) {
-        sprintf(p, "Error: Different predicate names.\n");
+        SAFE_APPEND(p, end, "Error: Different predicate names.\n");
         return;
     }
     if (l1->arity != l2->arity) {
-        sprintf(p, "Error: Different arity.\n");
+        SAFE_APPEND(p, end, "Error: Different arity.\n");
         return;
     }
 
     Substitution* s = NULL;
     bool success = true;
     for (int i = 0; i < l1->arity; i++) {
-        if (!unify_terms_internal(l1->args[i], l2->args[i], &s, trace_buf)) {
+        if (!unify_terms_internal(l1->args[i], l2->args[i], &s, trace_buf, end)) {
             success = false;
             break;
         }
@@ -224,9 +227,9 @@ void calculate_mgu_trace(Literal* l1, Literal* l2, char* trace_buf) {
 
     p = trace_buf + strlen(trace_buf);
     if (success) {
-        sprintf(p, "Success: Unification completed.\n");
+        SAFE_APPEND(p, end, "Success: Unification completed.\n");
     } else {
-        sprintf(p, "Failure: Could not unify.\n");
+        SAFE_APPEND(p, end, "Failure: Could not unify.\n");
     }
     free_substitution(s);
 }
@@ -247,7 +250,7 @@ Substitution* calculate_simultaneous_mgu(Literal** lits1, int count1, Literal** 
             *success = false; free_substitution(s); return NULL;
         }
         for (int k = 0; k < pivot1->arity; k++) {
-            if (!unify_terms_internal(pivot1->args[k], curr->args[k], &s, NULL)) {
+            if (!unify_terms_internal(pivot1->args[k], curr->args[k], &s, NULL, NULL)) {
                 *success = false; free_substitution(s); return NULL;
             }
         }
@@ -259,7 +262,7 @@ Substitution* calculate_simultaneous_mgu(Literal** lits1, int count1, Literal** 
             *success = false; free_substitution(s); return NULL;
         }
         for (int k = 0; k < pivot1->arity; k++) {
-            if (!unify_terms_internal(pivot1->args[k], curr->args[k], &s, NULL)) {
+            if (!unify_terms_internal(pivot1->args[k], curr->args[k], &s, NULL, NULL)) {
                 *success = false; free_substitution(s); return NULL;
             }
         }
@@ -300,33 +303,35 @@ void apply_substitution_to_clause(Clause* c, Substitution* s) {
     }
 }
 
-void calculate_mgu_string(Literal* l1, Literal* l2, char* output_buffer) {
+void calculate_mgu_string(Literal* l1, Literal* l2, char* output_buffer, size_t size) {
+    if (size == 0) return;
     output_buffer[0] = '\0';
     bool success;
     Substitution* s = calculate_mgu(l1, l2, &success);
 
     if (!success) {
-        sprintf(output_buffer, "Fail");
+        snprintf(output_buffer, size, "Fail");
         return;
     }
 
     if (!s) {
-        sprintf(output_buffer, "{}");
+        snprintf(output_buffer, size, "{}");
         return;
     }
 
     char* p = output_buffer;
-    p += sprintf(p, "{");
+    char* end = output_buffer + size;
+    SAFE_APPEND(p, end, "{");
     Substitution* curr = s;
     while (curr) {
-        p += sprintf(p, "%s = ", curr->var_name);
-        term_to_formula(curr->term, p);
+        SAFE_APPEND(p, end, "%s = ", curr->var_name);
+        term_to_formula(curr->term, p, (size_t)(end - p));
         p += strlen(p);
 
-        if (curr->next) p += sprintf(p, "; ");
+        if (curr->next) SAFE_APPEND(p, end, "; ");
         curr = curr->next;
     }
-    sprintf(p, "}");
+    SAFE_APPEND(p, end, "}");
 
     free_substitution(s);
 }
@@ -394,7 +399,7 @@ Clause* factor_clause(Clause* c, int i1, int i2, Substitution** out_sigma) {
     if (l1->is_negative != l2->is_negative || strcmp(l1->predicate_name, l2->predicate_name) != 0 || l1->arity != l2->arity) return NULL;
     Substitution* s = NULL;
     for (int i = 0; i < l1->arity; i++) {
-        if (!unify_terms_internal(l1->args[i], l2->args[i], &s, NULL)) { free_substitution(s); return NULL; }
+        if (!unify_terms_internal(l1->args[i], l2->args[i], &s, NULL, NULL)) { free_substitution(s); return NULL; }
     }
     if (out_sigma) *out_sigma = s;
     else free_substitution(s);
@@ -435,8 +440,8 @@ static void update_max_index(VarMaxIndex* arr, int* arr_len, const char* var_nam
             index = atoi(underscore + 1);
             strncpy(base, var_name, (size_t)(underscore - var_name));
             base[underscore - var_name] = '\0';
-        } else strcpy(base, var_name);
-    } else strcpy(base, var_name);
+        } else snprintf(base, sizeof(base), "%s", var_name);
+    } else snprintf(base, sizeof(base), "%s", var_name);
 
     for (int i = 0; i < *arr_len; i++) {
         if (strcmp(arr[i].base, base) == 0) {
@@ -445,7 +450,7 @@ static void update_max_index(VarMaxIndex* arr, int* arr_len, const char* var_nam
         }
     }
     if (*arr_len < 128) {
-        strcpy(arr[*arr_len].base, base);
+        snprintf(arr[*arr_len].base, sizeof(arr[*arr_len].base), "%s", base);
         arr[*arr_len].max_index = index;
         (*arr_len)++;
     }
@@ -477,13 +482,13 @@ static void apply_max_index_term(Term* t, VarMaxIndex* arr, int arr_len) {
         const char* p = underscore + 1;
         while (*p) { if (!is_digit_char(*p)) { is_num = false; break; } p++; }
         if (is_num) { strncpy(base, t->name, (size_t)(underscore - t->name)); base[underscore - t->name] = '\0'; }
-        else strcpy(base, t->name);
-    } else strcpy(base, t->name);
+        else snprintf(base, sizeof(base), "%s", t->name);
+    } else snprintf(base, sizeof(base), "%s", t->name);
     int target_index = 1;
     for (int i = 0; i < arr_len; i++) { if (strcmp(arr[i].base, base) == 0) { target_index = arr[i].max_index + 1; break; } }
     
     char new_name[512];
-    sprintf(new_name, "%s_%d", base, target_index);
+    snprintf(new_name, sizeof(new_name), "%s_%d", base, target_index);
     free(t->name); t->name = strdup(new_name);
 }
 
@@ -497,18 +502,20 @@ void standardize_apart_clause(Clause* target, Clause* context) {
     }
 }
 
-void calculate_simultaneous_mgu_string(Substitution* s, char* output_buffer) {
+void calculate_simultaneous_mgu_string(Substitution* s, char* output_buffer, size_t size) {
+    if (size == 0) return;
     output_buffer[0] = '\0';
-    if (!s) { sprintf(output_buffer, "{}"); return; }
+    if (!s) { snprintf(output_buffer, size, "{}"); return; }
     char* p = output_buffer;
-    p += sprintf(p, "{");
+    char* end = output_buffer + size;
+    SAFE_APPEND(p, end, "{");
     Substitution* curr = s;
     while (curr) {
-        p += sprintf(p, "%s = ", curr->var_name);
-        term_to_formula(curr->term, p);
+        SAFE_APPEND(p, end, "%s = ", curr->var_name);
+        term_to_formula(curr->term, p, (size_t)(end - p));
         p += strlen(p);
-        if (curr->next) p += sprintf(p, "; ");
+        if (curr->next) SAFE_APPEND(p, end, "; ");
         curr = curr->next;
     }
-    sprintf(p, "}");
+    SAFE_APPEND(p, end, "}");
 }

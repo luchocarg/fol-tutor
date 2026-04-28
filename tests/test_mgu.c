@@ -45,7 +45,7 @@ void test_mgu_simple_string(void) {
     Literal* l2 = test_parse_literal("P(a, b)", st);
     
     char result[512];
-    calculate_mgu_string(l1, l2, result);
+    calculate_mgu_string(l1, l2, result, sizeof(result));
     
     assert(strstr(result, "x = a") != NULL);
     assert(strstr(result, "y = b") != NULL);
@@ -62,7 +62,7 @@ void test_mgu_occurs_check(void) {
     Literal* l2 = test_parse_literal("P(f(?x))", st);
     
     char result[512];
-    calculate_mgu_string(l1, l2, result);
+    calculate_mgu_string(l1, l2, result, sizeof(result));
     assert(strcmp(result, "Fail") == 0);
     
     free_test_literal(l1);
@@ -77,7 +77,7 @@ void test_mgu_chained_composition(void) {
     Literal* l2 = test_parse_literal("P(?y, a)", st);
     
     char result[512];
-    calculate_mgu_string(l1, l2, result);
+    calculate_mgu_string(l1, l2, result, sizeof(result));
     
     assert(strstr(result, "x = a") != NULL);
     assert(strstr(result, "y = a") != NULL);
@@ -102,17 +102,13 @@ void test_mgu_literal_propagation(void) {
     Literal* l_target = test_parse_literal("Q(?x, ?w)", st);
     apply_substitution_to_literal(l_target, sigma);
     
-    char buffer[256] = "";
-    strcat(buffer, l_target->predicate_name);
-    strcat(buffer, "(");
     char term_buf1[128] = "";
-    term_to_formula(l_target->args[0], term_buf1);
-    strcat(buffer, term_buf1);
-    strcat(buffer, ", ");
+    term_to_formula(l_target->args[0], term_buf1, sizeof(term_buf1));
     char term_buf2[128] = "";
-    term_to_formula(l_target->args[1], term_buf2);
-    strcat(buffer, term_buf2);
-    strcat(buffer, ")");
+    term_to_formula(l_target->args[1], term_buf2, sizeof(term_buf2));
+
+    char buffer[512] = "";
+    snprintf(buffer, sizeof(buffer), "%s(%s, %s)", l_target->predicate_name, term_buf1, term_buf2);
     
     assert(strcmp(buffer, "Q(f(?z), ?w)") == 0);
     
@@ -142,11 +138,11 @@ void test_mgu_clause_propagation(void) {
     apply_substitution_to_clause(c, sigma);
     
     char term_buf[128] = "";
-    term_to_formula(c->literals[0]->args[1], term_buf);
+    term_to_formula(c->literals[0]->args[1], term_buf, sizeof(term_buf));
     assert(strcmp(term_buf, "c") == 0);
     
     term_buf[0] = '\0';
-    term_to_formula(c->literals[1]->args[0], term_buf);
+    term_to_formula(c->literals[1]->args[0], term_buf, sizeof(term_buf));
     assert(strcmp(term_buf, "c") == 0);
     
     free_substitution(sigma);
@@ -174,7 +170,7 @@ void test_simultaneous_mgu(void) {
     assert(success == true);
     
     char buffer[256] = "";
-    calculate_simultaneous_mgu_string(sigma, buffer);
+    calculate_simultaneous_mgu_string(sigma, buffer, sizeof(buffer));
     assert(strstr(buffer, "x = b") != NULL);
     assert(strstr(buffer, "y = a") != NULL);
     
@@ -213,7 +209,7 @@ void test_general_resolvent(void) {
     assert(res->count == 2);
     
     char buf[256] = "";
-    clause_to_formula(res, buf);
+    clause_to_formula(res, buf, sizeof(buf));
     assert(strstr(buf, "Q(a)") != NULL);
     assert(strstr(buf, "R(b)") != NULL);
     
@@ -245,7 +241,7 @@ void test_standardize_apart(void) {
 
     standardize_apart_clause(c2, c1);
     char buf[256] = "";
-    clause_to_formula(c2, buf);
+    clause_to_formula(c2, buf, sizeof(buf));
     assert(strstr(buf, "?x_1") != NULL);
 
     free_test_literal(c1->literals[0]); free(c1->literals); free(c1);
@@ -287,7 +283,7 @@ void test_factoring(void) {
     assert(res->count == 2);
     
     char buf[256] = "";
-    clause_to_formula(res, buf);
+    clause_to_formula(res, buf, sizeof(buf));
     assert(strstr(buf, "P(a)") != NULL);
     assert(strstr(buf, "Q(") != NULL);
     
@@ -305,7 +301,7 @@ void test_mgu_trace(void) {
     Literal* l2 = test_parse_literal("P(a, f(a))", st);
     
     char trace[4096] = "";
-    calculate_mgu_trace(l1, l2, trace);
+    calculate_mgu_trace(l1, l2, trace, sizeof(trace));
     
     assert(strlen(trace) > 0);
     assert(strstr(trace, "Assignment") != NULL);

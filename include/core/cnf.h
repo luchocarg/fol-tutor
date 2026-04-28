@@ -42,9 +42,9 @@ Literal* get_literal(Clause* clause, int index);
 Literal* copy_literal(Literal* src);
 void free_clause(Clause* c);
 
-void clause_to_formula(Clause* c, char* buf);
-void clause_to_formula_sep(Clause* c, const char* sep, char* buf);
-void clause_set_to_formula(ClauseSet* set, char* buf);
-void ast_to_cnf_sets(ASTNode* n, char* buf);
+void clause_to_formula(Clause* c, char* buf, size_t size);
+void clause_to_formula_sep(Clause* c, const char* sep, char* buf, size_t size);
+void clause_set_to_formula(ClauseSet* set, char* buf, size_t size);
+void ast_to_cnf_sets(ASTNode* n, char* buf, size_t size);
 
 #endif

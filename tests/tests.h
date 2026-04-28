@@ -29,7 +29,7 @@ static inline void assert_ast(ASTNode* node, const char* expected_sexpr) {
         exit(1);
     }
     char obtained[2048] = "";
-    ast_to_sexpr(node, obtained);
+    ast_to_sexpr(node, obtained, sizeof(obtained));
     if (strcmp(obtained, expected_sexpr) != 0) {
         exit(1);
     }
